@@ -10,8 +10,7 @@
 ("¿tienen jeans talla 32 por menos de 160 mil?", "¿cómo va mi pedido?") y un agente con la
 API de Claude responde **consultando los datos reales de la tienda** mediante herramientas fijas.
 
-> **Estado: etapa 1 de 5.** Ya funcionan la base del proyecto, la conexión de solo lectura y la
-> primera herramienta (buscar productos) con sus pruebas. El agente con IA llega en la etapa 2.
+> **Estado: etapa 2 de 5.** Ya funcionan el agente con la API de Claude (Haiku 5.5), 7 herramientas, roles invitado / cliente / administrador con identidad firmada, e historial con tokens y costo por respuesta.
 
 ## 🔐 La idea central: la IA nunca escribe SQL
 
@@ -34,8 +33,9 @@ en `tests/test_productos.py`).
 | Herramienta | Qué hace | Etapa |
 | --- | --- | --- |
 | `buscar_productos` | Busca por texto (sin importar tildes ni mayúsculas), categoría, talla disponible y precio máximo | ✅ 1 |
-| Estado de mis pedidos | Solo los pedidos del cliente que pregunta | 2 |
-| Resumen de ventas, pedidos pendientes, productos sin tallas | Solo administrador | 2 |
+| `ver_producto`, `listar_categorias` | Detalle de un producto y categorías con rango de precios | ✅ 2 |
+| `mis_pedidos` | Solo los pedidos del cliente que pregunta (el id sale del pase firmado, nunca del modelo) | ✅ 2 |
+| `pedidos_pendientes`, `resumen_ventas`, `productos_incompletos` | Solo administrador; sin datos de contacto de clientes | ✅ 2 |
 
 ## 🛠️ Tecnologías
 
@@ -78,7 +78,7 @@ Las pruebas de integración crean la estructura de VisagShop en una base vacía,
 conocidos y se conectan con un rol de solo lectura, igual que en producción. Sin
 `TEST_DATABASE_URL`, esas pruebas se omiten y el resto corre normal.
 
-**Resultado actual:** 46 pruebas, 0 fallos.
+**Resultado actual:** 140 pruebas, 0 fallos (Claude simulado: las pruebas no gastan saldo).
 
 ## 🧭 Decisiones técnicas
 
@@ -87,13 +87,15 @@ conocidos y se conectan con un rol de solo lectura, igual que en producción. Si
   psycopg quedaban bloqueadas; pg8000 funciona igual en Windows, Linux y Docker.
 - **Búsqueda sin tildes sin extensiones.** Se usa `translate()` de PostgreSQL en vez de la
   extensión `unaccent`, para no depender de permisos especiales en la base.
+- **API de Claude por HTTP directo (httpx).** El SDK oficial depende de un módulo compilado que el Control de aplicaciones de Windows bloquea; el bucle de herramientas está escrito a mano, con reintentos, tope de rondas y cálculo de costo.
+- **Dos bases:** la de la tienda (solo lectura) y una propia para el historial, con migraciones Alembic.
 - **Los `%` y `_` del usuario se buscan literalmente** (`autoescape=True`): no funcionan como
   comodines de `LIKE`.
 
 ## 🗺️ Etapas
 
 1. ✅ Base del proyecto, conexión de solo lectura y primera herramienta con pruebas
-2. Agente completo con la API de Claude, todas las herramientas y roles (cliente / administrador)
+2. ✅ Agente completo con la API de Claude, todas las herramientas y roles (cliente / administrador)
 3. Seguridad: límite de peticiones y pruebas contra *prompt injection*
 4. Evaluaciones del agente (~40 preguntas) con reporte
 5. Chat integrado en VisagShop, Docker, publicación en Render y README final

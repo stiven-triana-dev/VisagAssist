@@ -6,13 +6,17 @@ from fastapi.testclient import TestClient
 pytestmark = pytest.mark.integracion
 
 
-def test_estado_responde_ok_con_base_conectada(cliente: TestClient) -> None:
+def test_estado_responde_ok_sin_tocar_la_base(cliente: TestClient) -> None:
     respuesta = cliente.get("/api/v1/estado")
     assert respuesta.status_code == 200
     cuerpo = respuesta.json()
     assert cuerpo["estado"] == "OK"
     assert cuerpo["aplicacion"] == "VisagAssist"
-    assert cuerpo["base_de_datos"] == "OK"
+    assert cuerpo["base_de_datos"] is None
+
+
+def test_estado_con_base_conectada(cliente: TestClient) -> None:
+    assert cliente.get("/api/v1/estado/base").json()["base_de_datos"] == "OK"
 
 
 def test_herramienta_de_productos_por_http(cliente: TestClient) -> None:

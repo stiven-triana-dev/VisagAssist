@@ -15,14 +15,27 @@ from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
+from alembic import command
+from alembic.config import Config
 from fastapi.testclient import TestClient
 from sqlalchemy import Engine, create_engine, text
 from sqlalchemy.engine import make_url
 from sqlalchemy.orm import Session
 
-from visagassist.api import app
+from simulado import ClaudeSimulado
+from visagassist import api, historial
+from visagassist.agente import Agente
+from visagassist.config import obtener_configuracion
 from visagassist.db import crear_motor, fabrica_sesiones, obtener_sesion
 
+# Configuración mínima para que la aplicación arranque en las pruebas (sin secretos reales).
+SECRETO_PRUEBAS = "secreto-de-pruebas-con-al-menos-32-bytes"
+os.environ.setdefault("DATABASE_URL", "postgresql+pg8000://sin:uso@localhost:1/ninguna")
+os.environ["VISAGASSIST_SECRETO"] = SECRETO_PRUEBAS
+os.environ.pop("ANTHROPIC_API_KEY", None)
+obtener_configuracion.cache_clear()
+
+RAIZ = Path(__file__).parent.parent
 DATOS = Path(__file__).parent / "datos"
 ROL_LECTURA = "visagassist_prueba_lectura"
 CLAVE_LECTURA = "clave-solo-pruebas"
@@ -85,13 +98,45 @@ def sesion(motor_lectura: Engine) -> Iterator[Session]:
         yield s
 
 
+@pytest.fixture(scope="session")
+def motor_asistente(motor_lectura: Engine) -> Iterator[Engine]:
+    """Base propia del asistente: en las pruebas, la misma base con el usuario dueño.
+    Las tablas se crean con las migraciones reales de Alembic."""
+    url = _url_dueno()
+    configuracion = Config(str(RAIZ / "alembic.ini"))
+    configuracion.set_main_option("sqlalchemy.url", url.replace("%", "%%"))
+    command.upgrade(configuracion, "head")
+    motor = create_engine(url)
+    yield motor
+    motor.dispose()
+
+
 @pytest.fixture
-def cliente(motor_lectura: Engine) -> Iterator[TestClient]:
-    def _sesion_de_prueba() -> Iterator[Session]:
+def sesion_asistente(motor_asistente: Engine) -> Iterator[Session]:
+    with Session(motor_asistente) as s:
+        yield s
+
+
+@pytest.fixture
+def claude() -> ClaudeSimulado:
+    return ClaudeSimulado()
+
+
+@pytest.fixture
+def cliente(
+    motor_lectura: Engine, motor_asistente: Engine, claude: ClaudeSimulado
+) -> Iterator[TestClient]:
+    def _sesion_tienda() -> Iterator[Session]:
         with fabrica_sesiones(motor_lectura)() as s:
             yield s
 
-    app.dependency_overrides[obtener_sesion] = _sesion_de_prueba
-    with TestClient(app) as c:
+    def _sesion_asistente() -> Iterator[Session]:
+        with Session(motor_asistente, expire_on_commit=False) as s:
+            yield s
+
+    api.app.dependency_overrides[obtener_sesion] = _sesion_tienda
+    api.app.dependency_overrides[historial.obtener_sesion_asistente] = _sesion_asistente
+    api.app.dependency_overrides[api.obtener_agente] = lambda: Agente(claude)
+    with TestClient(api.app) as c:
         yield c
-    app.dependency_overrides.clear()
+    api.app.dependency_overrides.clear()

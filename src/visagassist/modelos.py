@@ -5,7 +5,17 @@ la estructura la define y migra VisagShop. Con estas definiciones SQLAlchemy arm
 consultas con parámetros, así nunca se concatena texto del usuario dentro del SQL.
 """
 
-from sqlalchemy import Column, Integer, MetaData, SmallInteger, String, Table, Uuid
+from sqlalchemy import (
+    Boolean,
+    Column,
+    DateTime,
+    Integer,
+    MetaData,
+    SmallInteger,
+    String,
+    Table,
+    Uuid,
+)
 
 metadatos = MetaData()
 
@@ -42,9 +52,48 @@ productos_tallas = Table(
     Column("position", SmallInteger, nullable=False),
 )
 
-usuarios = Table(
-    "users",
+colores = Table(
+    "colors",
+    metadatos,
+    Column("id", Integer, primary_key=True),
+    Column("name", String(25), nullable=False),
+)
+
+productos_colores = Table(
+    "product_colors",
+    metadatos,
+    Column("product_id", String(10), primary_key=True),
+    Column("color_id", Integer, primary_key=True),
+    Column("position", SmallInteger, nullable=False),
+)
+
+# Pedidos: solo las columnas que el asistente necesita. Teléfono, dirección y documento
+# del cliente NO se describen aquí, así ninguna herramienta puede leerlos por error.
+pedidos = Table(
+    "orders",
     metadatos,
     Column("id", Uuid, primary_key=True),
-    Column("first_name", String(75), nullable=False),
+    Column("number", Integer, nullable=False),
+    Column("user_id", Uuid, nullable=True),
+    Column("status", String(20), nullable=False),
+    Column("first_name", String(65), nullable=False),
+    Column("last_name", String(65), nullable=False),
+    Column("city", String(70), nullable=False),
+    Column("payment_method", String(20), nullable=False),
+    Column("subtotal", Integer, nullable=False),
+    Column("has_unpriced", Boolean, nullable=False),
+    Column("created_at", DateTime(timezone=True), nullable=False),
+)
+
+items_pedido = Table(
+    "order_items",
+    metadatos,
+    Column("id", Integer, primary_key=True),
+    Column("order_id", Uuid, nullable=False),
+    Column("product_id", String(10), nullable=True),
+    Column("product_name", String(120), nullable=False),
+    Column("size", String(50), nullable=False),
+    Column("quantity", SmallInteger, nullable=False),
+    Column("unit_price", Integer, nullable=True),
+    Column("position", SmallInteger, nullable=False),
 )

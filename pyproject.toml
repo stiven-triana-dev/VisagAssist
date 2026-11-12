@@ -10,6 +10,9 @@ dependencies = [
     "sqlalchemy>=2.0",
     "pg8000>=1.31",  # conector en Python puro (ver README: decisiones técnicas)
     "pydantic-settings>=2.4",
+    "httpx>=0.27",   # llamadas HTTP a la API de Claude
+    "pyjwt>=2.8",    # identidad firmada que envía VisagShop
+    "alembic>=1.13", # migraciones de la base propia del asistente
 ]
 
 [project.optional-dependencies]
@@ -29,6 +32,7 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["tests"]
 addopts = "-q"
 markers = [
     "integracion: pruebas que usan PostgreSQL real (necesitan TEST_DATABASE_URL)",
@@ -49,5 +53,5 @@ ignore = ["RUF001", "RUF002", "RUF003"]  # tildes y signos del español en texto
 [tool.mypy]
 python_version = "3.12"
 strict = true
-mypy_path = "src"
+mypy_path = "src,tests"
 packages = ["visagassist"]

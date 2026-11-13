@@ -108,14 +108,24 @@ def obtener_limites() -> limites.Limites:
     )
 
 
-def obtener_origen(peticion: Request) -> str:
-    """Huella de la conexión (la IP real llega por el proxy de Render: uvicorn --proxy-headers)."""
-    secreto = obtener_configuracion().secreto_identidad
-    ip = peticion.client.host if peticion.client else None
-    return limites.huella_origen(ip, secreto.get_secret_value() if secreto else "")
-
-
 Quien = Annotated[Identidad, Depends(obtener_identidad)]
+
+
+def obtener_origen(peticion: Request, quien: Quien) -> str:
+    """Huella de la conexión para los límites de uso.
+
+    Si VisagShop hace de intermediario, el origen viene dentro del pase firmado (la IP que se ve
+    aquí sería la de su servidor). Si no, se usa la IP real, que llega por el proxy de Render
+    gracias a ``uvicorn --proxy-headers``.
+    """
+    secreto = obtener_configuracion().secreto_identidad
+    clave = secreto.get_secret_value() if secreto else ""
+    if quien.origen:
+        return limites.huella_origen(f"pase:{quien.origen}", clave)
+    ip = peticion.client.host if peticion.client else None
+    return limites.huella_origen(ip, clave)
+
+
 AgenteListo = Annotated[Agente, Depends(obtener_agente)]
 
 

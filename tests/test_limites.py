@@ -176,3 +176,21 @@ def test_inicio_del_dia_en_hora_de_colombia() -> None:
     momento = datetime(2026, 11, 13, 3, 0, tzinfo=UTC)
     inicio = inicio_del_dia(momento)
     assert (inicio.year, inicio.month, inicio.day, inicio.hour) == (2026, 11, 12, 0)
+
+
+def test_invitados_detras_de_visagshop_tienen_limites_separados(
+    cliente: TestClient, claude: ClaudeSimulado
+) -> None:
+    # VisagShop hace de intermediario: la IP es siempre la de su servidor, pero cada pase
+    # firmado trae la huella del visitante real, así uno no gasta las preguntas del otro.
+    limites(invitado=1)
+    api.app.dependency_overrides.pop(api.obtener_origen, None)  # se usa el origen real
+    claude.guion += [texto("a"), texto("b")]
+
+    def pase_de(visitante: str) -> dict[str, str]:
+        pase = emitir_pase(Identidad(Rol.INVITADO, origen=visitante), SECRETO_PRUEBAS)
+        return {"Authorization": f"Bearer {pase}"}
+
+    assert preguntar(cliente, pase_de("visitante-1")) == 200
+    assert preguntar(cliente, pase_de("visitante-1")) == 429
+    assert preguntar(cliente, pase_de("visitante-2")) == 200

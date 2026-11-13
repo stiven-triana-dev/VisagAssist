@@ -103,3 +103,8 @@ def test_clave_de_propietario_distingue_usuarios() -> None:
     a, b = Identidad(Rol.CLIENTE, uuid4()), Identidad(Rol.CLIENTE, uuid4())
     assert a.clave_propietario != b.clave_propietario
     assert Identidad(Rol.INVITADO).clave_propietario == "invitado:-"
+
+
+def test_el_origen_firmado_viaja_en_el_pase() -> None:
+    invitado = Identidad(Rol.INVITADO, origen="huella-del-visitante")
+    assert verificar_pase(emitir_pase(invitado, SECRETO), SECRETO) == invitado

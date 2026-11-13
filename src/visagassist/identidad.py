@@ -30,6 +30,9 @@ class Identidad:
     rol: Rol
     usuario_id: UUID | None = None
     nombre: str | None = None
+    # Huella de la conexión de quien escribe, calculada por VisagShop: cuando hace de
+    # intermediario, todo llega desde su servidor y esa IP no sirve para los límites.
+    origen: str | None = None
 
     @property
     def clave_propietario(self) -> str:
@@ -58,6 +61,8 @@ def emitir_pase(identidad: Identidad, secreto: str, vigencia: timedelta = VIGENC
         datos["sub"] = str(identidad.usuario_id)
     if identidad.nombre:
         datos["nombre"] = identidad.nombre
+    if identidad.origen:
+        datos["origen"] = identidad.origen
     return jwt.encode(datos, secreto, algorithm="HS256")
 
 
@@ -93,4 +98,10 @@ def verificar_pase(pase: str, secreto: str) -> Identidad:
             raise PaseInvalido("Un cliente debe traer su id de usuario") from error
 
     nombre = datos.get("nombre")
-    return Identidad(rol, usuario_id, str(nombre)[:75] if nombre else None)
+    origen = datos.get("origen")
+    return Identidad(
+        rol,
+        usuario_id,
+        str(nombre)[:75] if nombre else None,
+        str(origen)[:128] if origen else None,
+    )

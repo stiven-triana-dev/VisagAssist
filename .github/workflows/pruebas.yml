@@ -36,3 +36,20 @@ jobs:
         run: mypy src tests
       - name: Pruebas (pytest con PostgreSQL real)
         run: pytest
+
+  imagen:
+    name: Imagen Docker
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Construir la imagen
+        run: docker build -t visagassist .
+      - name: Arranca y responde /api/v1/estado
+        run: |
+          docker run -d --name asistente -p 8000:8000 --entrypoint uvicorn visagassist             visagassist.api:app --host 0.0.0.0 --port 8000
+          for i in $(seq 1 30); do
+            curl -fsS http://localhost:8000/api/v1/estado && exit 0
+            sleep 1
+          done
+          docker logs asistente
+          exit 1

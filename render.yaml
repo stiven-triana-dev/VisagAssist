@@ -1,0 +1,21 @@
+# Despliegue en Render (plan gratuito). Las claves se llenan en Render > Environment.
+services:
+  - type: web
+    name: visagassist
+    runtime: docker
+    plan: free
+    region: ohio
+    healthCheckPath: /api/v1/estado
+    envVars:
+      - key: DATABASE_URL            # base de VisagShop con el rol de SOLO LECTURA
+        sync: false
+      - key: DATABASE_URL_ASISTENTE  # base propia: historial y costos
+        sync: false
+      - key: VISAGASSIST_SECRETO     # el mismo valor en VisagShop
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: PROVEEDOR_IA
+        value: gemini
+      - key: MODELO_GEMINI
+        value: gemini-3.5-flash-lite

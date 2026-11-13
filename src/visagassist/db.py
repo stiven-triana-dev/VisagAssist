@@ -21,9 +21,14 @@ TIEMPO_MAXIMO_CONSULTA_MS = 5000
 
 
 def preparar_url(url: str) -> tuple[URL, dict[str, Any]]:
-    """pg8000 no entiende "?sslmode=require" en la URL (formato de Neon y de libpq):
-    se quita de la URL y se activa SSL con verificación de certificado."""
+    """Acepta la URL tal como la copia Neon ("postgresql://...?sslmode=require").
+
+    Se usa siempre el conector pg8000, y como pg8000 no entiende "sslmode", se quita de la
+    URL y se activa SSL con verificación de certificado.
+    """
     datos_url = make_url(url)
+    if datos_url.drivername in {"postgres", "postgresql"}:
+        datos_url = datos_url.set(drivername="postgresql+pg8000")
     argumentos_conexion: dict[str, Any] = {}
     if datos_url.query.get("sslmode") in {"require", "verify-ca", "verify-full"}:
         datos_url = datos_url.difference_update_query(["sslmode", "channel_binding"])

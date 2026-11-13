@@ -22,3 +22,12 @@ def test_url_local_sin_ssl_queda_igual() -> None:
     url, argumentos = preparar_url("postgresql+pg8000://lector:clave@localhost:5432/tienda")
     assert url.host == "localhost"
     assert argumentos == {}
+
+
+def test_acepta_la_url_tal_como_la_copia_neon() -> None:
+    url, argumentos = preparar_url(
+        "postgresql://lector:clave@ep-ejemplo.neon.tech/neondb?sslmode=require&channel_binding=require"
+    )
+    assert url.drivername == "postgresql+pg8000"
+    assert dict(url.query) == {}
+    assert "ssl_context" in argumentos

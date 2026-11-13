@@ -35,7 +35,9 @@ from visagassist.limites import Limites
 SECRETO_PRUEBAS = "secreto-de-pruebas-con-al-menos-32-bytes"
 os.environ.setdefault("DATABASE_URL", "postgresql+pg8000://sin:uso@localhost:1/ninguna")
 os.environ["VISAGASSIST_SECRETO"] = SECRETO_PRUEBAS
-os.environ.pop("ANTHROPIC_API_KEY", None)
+# Vacías a propósito: las pruebas nunca usan las claves reales que haya en el archivo .env.
+os.environ["ANTHROPIC_API_KEY"] = ""
+os.environ["GEMINI_API_KEY"] = ""
 obtener_configuracion.cache_clear()
 
 RAIZ = Path(__file__).parent.parent

@@ -93,3 +93,14 @@ def test_el_guion_bajo_no_funciona_como_comodin(sesion: Session) -> None:
 def test_un_intento_de_inyeccion_sql_se_trata_como_texto(sesion: Session, ataque: str) -> None:
     assert ids(sesion, texto=ataque) == []
     assert sesion.execute(text("SELECT count(*) FROM products")).scalar_one() == 8
+
+
+def test_orden_del_mas_caro_al_mas_barato(sesion: Session) -> None:
+    # Los productos sin precio quedan al final también en este orden.
+    assert ids(sesion, orden="mas_caro", limite=3) == ["p007", "p005", "p006"]
+    assert ids(sesion, categoria="gorras", orden="mas_caro") == ["p002", "p001"]
+
+
+def test_orden_invalido_se_rechaza() -> None:
+    with pytest.raises(ValueError):
+        FiltrosBusqueda(orden="al_azar")  # type: ignore[arg-type]

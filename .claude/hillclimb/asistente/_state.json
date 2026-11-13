@@ -1,0 +1,31 @@
+{
+  "flow": "asistente",
+  "metrics": [
+    {
+      "id": "aprobado",
+      "label": "Aprobado",
+      "kind": "binary"
+    },
+    {
+      "id": "herramienta",
+      "label": "Herramienta",
+      "kind": "binary"
+    },
+    {
+      "id": "contenido",
+      "label": "Contenido",
+      "kind": "binary"
+    }
+  ],
+  "perf_fields": [
+    "latency_s",
+    "tool_calls",
+    "usage"
+  ],
+  "harness_paths": [
+    "evaluaciones\\ejecutar.py",
+    "evaluaciones\\calificar.py",
+    "evaluaciones\\casos.json"
+  ],
+  "harness_sha": "2e41b6c47b92a1365803a7412fb797b6a798f7a630eddde4ab964a8032cc8d5c"
+}

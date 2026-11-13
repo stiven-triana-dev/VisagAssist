@@ -2,8 +2,9 @@
 
 from decimal import Decimal
 from functools import lru_cache
+from typing import Literal
 
-from pydantic import Field, PostgresDsn, SecretStr
+from pydantic import Field, PostgresDsn, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -22,6 +23,13 @@ class Configuracion(BaseSettings):
     anthropic_api_key: SecretStr | None = Field(default=None, alias="ANTHROPIC_API_KEY")
     modelo_claude: str = Field(default="claude-haiku-5-5", alias="MODELO_CLAUDE")
 
+    # Gemini (Google AI Studio, plan gratuito) como proveedor alternativo.
+    gemini_api_key: SecretStr | None = Field(default=None, alias="GEMINI_API_KEY")
+    modelo_gemini: str = Field(default="gemini-3.6-flash", alias="MODELO_GEMINI")
+
+    # Qué proveedor responde: "claude", "gemini" o "auto" (Claude si hay clave; si no, Gemini).
+    proveedor_ia: Literal["auto", "claude", "gemini"] = Field(default="auto", alias="PROVEEDOR_IA")
+
     # Secreto compartido con VisagShop para firmar quién pregunta (cliente o administrador).
     secreto_identidad: SecretStr | None = Field(default=None, alias="VISAGASSIST_SECRETO")
 
@@ -35,6 +43,18 @@ class Configuracion(BaseSettings):
     presupuesto_diario_usd: Decimal = Field(
         default=Decimal("1.00"), ge=0, alias="PRESUPUESTO_DIARIO_USD"
     )
+
+    @field_validator(
+        "anthropic_api_key",
+        "gemini_api_key",
+        "secreto_identidad",
+        "database_url_asistente",
+        mode="before",
+    )
+    @classmethod
+    def _vacio_es_ninguno(cls, valor: object) -> object:
+        """Una línea como "ANTHROPIC_API_KEY=" en el .env significa "sin clave"."""
+        return None if isinstance(valor, str) and not valor.strip() else valor
 
 
 @lru_cache

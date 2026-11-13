@@ -14,3 +14,8 @@ build/
 .env
 .env.*
 !.env.example
+
+# Evaluaciones: lo generado no se sube (se regenera)
+.claude/hillclimb/**/traces/
+.claude/hillclimb/**/report.html
+.claude/hillclimb/**/trajectory/

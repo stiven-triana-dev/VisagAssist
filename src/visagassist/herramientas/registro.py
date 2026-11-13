@@ -60,7 +60,10 @@ HERRAMIENTAS: tuple[Herramienta, ...] = (
     Herramienta(
         "buscar_productos",
         "Busca productos del catálogo de VisagShop por palabras, categoría, talla disponible "
-        "y precio máximo en pesos colombianos. Úsala antes de recomendar o dar precios.",
+        "y precio máximo en pesos colombianos. Úsala antes de recomendar o dar precios. "
+        "Devuelve como máximo el límite pedido (10 por defecto), del más barato al más caro o, "
+        "con orden=mas_caro, del más caro al más barato. NO sirve para contar productos: "
+        "para eso usa listar_categorias, que trae el total y el rango de precios por categoría.",
         productos.FiltrosBusqueda,
         TODOS,
         lambda s, a, _q: productos.buscar_productos(s, a),

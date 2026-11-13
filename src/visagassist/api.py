@@ -14,11 +14,12 @@ from sqlalchemy.orm import Session
 
 from visagassist import __version__, historial, limites
 from visagassist.agente import Agente
-from visagassist.claude import ClienteHTTPClaude, ErrorClaude
+from visagassist.claude import ErrorClaude
 from visagassist.config import obtener_configuracion
 from visagassist.db import obtener_sesion
 from visagassist.herramientas.productos import FiltrosBusqueda, ProductoResumen, buscar_productos
 from visagassist.identidad import INVITADO, Identidad, PaseInvalido, Rol, verificar_pase
+from visagassist.proveedores import elegir_proveedor
 from visagassist.seguridad import filtrar_respuesta, limpiar_mensaje
 
 registro_log = logging.getLogger(__name__)
@@ -79,11 +80,11 @@ def obtener_identidad(authorization: Annotated[str | None, Header()] = None) -> 
 
 @lru_cache
 def _agente_configurado() -> Agente | None:
-    configuracion = obtener_configuracion()
-    if configuracion.anthropic_api_key is None:
+    proveedor = elegir_proveedor(obtener_configuracion())
+    if proveedor is None:
         return None
-    cliente = ClienteHTTPClaude(configuracion.anthropic_api_key.get_secret_value())
-    return Agente(cliente, modelo=configuracion.modelo_claude)
+    registro_log.info("Proveedor de IA: %s (%s)", proveedor.nombre, proveedor.modelo)
+    return Agente(proveedor.cliente, modelo=proveedor.modelo)
 
 
 def obtener_agente() -> Agente:
@@ -204,7 +205,7 @@ def chat(
     try:
         respuesta = agente.responder(sesion_tienda, quien, contexto, peticion.mensaje)
     except ErrorClaude as error:
-        registro_log.error("Falló la API de Claude (estado %s): %s", error.estado, error)
+        registro_log.error("Falló el proveedor de IA (estado %s): %s", error.estado, error)
         sesion_asistente.rollback()
         raise HTTPException(
             status.HTTP_502_BAD_GATEWAY, "El asistente no está disponible en este momento"

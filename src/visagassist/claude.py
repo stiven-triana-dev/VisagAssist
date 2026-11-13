@@ -63,8 +63,13 @@ class Uso:
         )
 
 
+GRATIS = Precio(Decimal(0), Decimal(0), Decimal(0))
+
+
 def costo_usd(modelo: str, uso: Uso) -> Decimal:
     precio = PRECIOS.get(modelo)
+    if precio is None and modelo.startswith("gemini"):
+        precio = GRATIS  # se usa el plan gratuito de Google AI Studio
     if precio is None:
         raise ValueError(f"No hay precio registrado para el modelo {modelo}")
     millon = Decimal(1_000_000)

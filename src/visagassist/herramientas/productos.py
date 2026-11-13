@@ -1,5 +1,7 @@
 """Herramienta: buscar productos del catálogo de VisagShop."""
 
+from typing import Literal
+
 from pydantic import BaseModel, Field
 from sqlalchemy import ColumnElement, exists, func, or_, select
 from sqlalchemy.orm import Session
@@ -29,6 +31,10 @@ class FiltrosBusqueda(BaseModel):
     talla: str | None = Field(default=None, max_length=25)
     precio_maximo: int | None = Field(default=None, ge=0, le=10_000_000)
     limite: int = Field(default=10, ge=1, le=20)
+    orden: Literal["mas_barato", "mas_caro"] = Field(
+        default="mas_barato",
+        description="mas_caro para encontrar los productos de mayor precio primero",
+    )
 
 
 class ProductoResumen(BaseModel):
@@ -85,7 +91,12 @@ def buscar_productos(sesion: Session, filtros: FiltrosBusqueda) -> list[Producto
         )
         .join(categorias, categorias.c.id == productos.c.category_id)
         .where(*condiciones)
-        .order_by(productos.c.price.asc().nulls_last(), productos.c.id)
+        .order_by(
+            productos.c.price.desc().nulls_last()
+            if filtros.orden == "mas_caro"
+            else productos.c.price.asc().nulls_last(),
+            productos.c.id,
+        )
         .limit(filtros.limite)
     )
     filas = sesion.execute(consulta).all()

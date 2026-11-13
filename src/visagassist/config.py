@@ -44,6 +44,16 @@ class Configuracion(BaseSettings):
         default=Decimal("1.00"), ge=0, alias="PRESUPUESTO_DIARIO_USD"
     )
 
+    @field_validator("database_url", "database_url_asistente", mode="before")
+    @classmethod
+    def _limpiar_url(cls, valor: object) -> object:
+        """Tolera espacios, comillas o el formato "psql '...'" al pegar la dirección."""
+        if isinstance(valor, str) and valor.strip():
+            from visagassist.db import limpiar_url  # import tardío: db importa config
+
+            return limpiar_url(valor)
+        return valor
+
     @field_validator(
         "anthropic_api_key",
         "gemini_api_key",

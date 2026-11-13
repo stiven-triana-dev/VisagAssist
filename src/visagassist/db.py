@@ -6,6 +6,7 @@ Hay dos barreras para que el asistente nunca pueda modificar la tienda:
    más permisos por error, PostgreSQL rechaza cualquier INSERT, UPDATE o DELETE.
 """
 
+import re
 import ssl
 from collections.abc import Iterator
 from functools import lru_cache
@@ -20,13 +21,23 @@ from visagassist.config import obtener_configuracion
 TIEMPO_MAXIMO_CONSULTA_MS = 5000
 
 
+def limpiar_url(texto: str) -> str:
+    """Encuentra la dirección aunque se haya pegado con espacios, saltos de línea, comillas
+    o en el formato ``psql 'postgresql://...'`` que también ofrece Neon."""
+    encontrada = re.search(r"postgres(?:ql)?(?:\+\w+)?://[^\s'\"]+", texto)
+    if encontrada is None:
+        # Sin mostrar el valor: podría contener la clave.
+        raise ValueError("La dirección de la base no es válida: debe empezar por postgresql://")
+    return encontrada.group(0)
+
+
 def preparar_url(url: str) -> tuple[URL, dict[str, Any]]:
     """Acepta la URL tal como la copia Neon ("postgresql://...?sslmode=require").
 
     Se usa siempre el conector pg8000, y como pg8000 no entiende "sslmode", se quita de la
     URL y se activa SSL con verificación de certificado.
     """
-    datos_url = make_url(url)
+    datos_url = make_url(limpiar_url(url))
     if datos_url.drivername in {"postgres", "postgresql"}:
         datos_url = datos_url.set(drivername="postgresql+pg8000")
     argumentos_conexion: dict[str, Any] = {}

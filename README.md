@@ -10,7 +10,35 @@
 ("¿tienen jeans talla 32 por menos de 160 mil?", "¿cómo va mi pedido?") y un agente con la
 API de Claude responde **consultando los datos reales de la tienda** mediante herramientas fijas.
 
-> **Estado: etapa 4 de 5.** Ya funcionan el agente (Claude Haiku 5.5 o Gemini, intercambiables), 7 herramientas, roles invitado / cliente / administrador con identidad firmada, historial con tokens y costo por respuesta, límites de uso, defensas contra *prompt injection* y **evaluaciones con 42 casos: 100 % en la versión actual**.
+> **Terminado (5 de 5 etapas) y en línea.** Agente con Claude Haiku 5.5 o Gemini (intercambiables), 7 herramientas, roles invitado / cliente / administrador con identidad firmada, historial con tokens y costo, límites de uso, defensas contra *prompt injection*, **evaluaciones con 42 casos (100 %)** y chat integrado en la tienda.
+
+## 🌐 Pruébalo
+
+- **En la tienda:** <https://visagshop.onrender.com> → botón **"Pregúntale al asistente"** (abajo a la derecha).
+- **La API (Swagger):** <https://visagassist.onrender.com/docs>
+
+> Corre en el plan gratuito de Render: si nadie lo ha usado en un rato, la primera respuesta puede tardar
+> cerca de un minuto mientras el servicio despierta.
+
+<p>
+  <img src="docs/capturas/burbuja-escritorio.png" alt="La burbuja de VisagAssist en VisagShop (computador)" width="68%">
+  <img src="docs/capturas/burbuja-movil.png" alt="La burbuja de VisagAssist en celular" width="26%">
+</p>
+
+## 🏗️ Arquitectura
+
+```mermaid
+flowchart LR
+    N["Navegador<br/>(burbuja de chat)"] -- "pregunta" --> S["Servidor de VisagShop<br/>(Node / Express)"]
+    S -- "pase firmado JWT HS256<br/>(rol, id del cliente, huella)" --> A["VisagAssist<br/>(Python / FastAPI)"]
+    A -- "herramientas fijas" --> T[("Base de la tienda<br/>usuario de SOLO LECTURA")]
+    A -- "historial, tokens y costo" --> H[("Base propia<br/>del asistente")]
+    A -- "Messages API" --> M["Claude Haiku 5.5<br/>o Gemini"]
+```
+
+El navegador nunca habla directo con VisagAssist: el servidor de VisagShop, que sabe quién inició
+sesión, firma un pase de 5 minutos con un secreto que solo conocen los dos servicios. Por eso nadie
+puede hacerse pasar por otro cliente ni por el administrador, aunque modifique la página.
 
 ## 🔐 La idea central: la IA nunca escribe SQL
 
@@ -88,7 +116,7 @@ el agente, las herramientas, la seguridad y las pruebas no cambian.
 ## 🛠️ Tecnologías
 
 Python 3.12 · FastAPI (documentación Swagger en `/docs`) · SQLAlchemy 2 · PostgreSQL (Neon) ·
-pg8000 · Pydantic · pytest · ruff · mypy (estricto) · GitHub Actions
+pg8000 · Pydantic · Alembic · pytest · ruff · mypy (estricto) · Docker · GitHub Actions · Render
 
 ## 🚀 Cómo ejecutarlo
 
@@ -110,8 +138,27 @@ VisagAssist lee la misma base de VisagShop con un usuario propio que solo puede 
 CREATE ROLE visagassist_lectura LOGIN PASSWORD 'una-clave-segura';
 GRANT CONNECT ON DATABASE neondb TO visagassist_lectura;
 GRANT USAGE ON SCHEMA public TO visagassist_lectura;
-GRANT SELECT ON ALL TABLES IN SCHEMA public TO visagassist_lectura;
+-- Solo las tablas que usan las herramientas: nada de usuarios ni sesiones.
+GRANT SELECT ON products, categories, sizes, colors, product_sizes, product_colors,
+                orders, order_items TO visagassist_lectura;
+ALTER ROLE visagassist_lectura SET default_transaction_read_only = on;
+ALTER ROLE visagassist_lectura SET statement_timeout = '5s';
 ```
+
+Usa la conexión **directa** de Neon (sin `-pooler`): con el pooler, los ajustes de solo lectura por
+sesión no son confiables.
+
+### Con Docker
+
+```bash
+docker build -t visagassist .
+docker run --env-file .env -p 8000:8000 visagassist   # aplica las migraciones y arranca
+```
+
+### Publicación en Render
+
+`render.yaml` crea el servicio (Docker, plan gratuito, Gemini). En VisagShop se configuran
+`VISAGASSIST_URL` y el mismo `VISAGASSIST_SECRETO`; sin ellas la burbuja simplemente no aparece.
 
 ## 🧪 Pruebas
 
@@ -126,7 +173,8 @@ Las pruebas de integración crean la estructura de VisagShop en una base vacía,
 conocidos y se conectan con un rol de solo lectura, igual que en producción. Sin
 `TEST_DATABASE_URL`, esas pruebas se omiten y el resto corre normal.
 
-**Resultado actual:** 370 pruebas, 0 fallos (modelo simulado: las pruebas no gastan saldo).
+**Resultado actual:** 380 pruebas, 0 fallos (modelo simulado: las pruebas no gastan saldo). La CI
+además construye la imagen Docker y comprueba que arranca.
 
 ## 🧭 Decisiones técnicas
 
@@ -137,6 +185,8 @@ conocidos y se conectan con un rol de solo lectura, igual que en producción. Si
   extensión `unaccent`, para no depender de permisos especiales en la base.
 - **API de Claude por HTTP directo (httpx).** El SDK oficial depende de un módulo compilado que el Control de aplicaciones de Windows bloquea; el bucle de herramientas está escrito a mano, con reintentos, tope de rondas y cálculo de costo.
 - **Dos bases:** la de la tienda (solo lectura) y una propia para el historial, con migraciones Alembic.
+- **Plurales en la búsqueda.** "jeans" debe encontrar "Jean 1.1": cada palabra se busca en
+  singular. Se encontró probando la versión publicada, y quedó con su prueba.
 - **Los `%` y `_` del usuario se buscan literalmente** (`autoescape=True`): no funcionan como
   comodines de `LIKE`.
 
@@ -146,7 +196,7 @@ conocidos y se conectan con un rol de solo lectura, igual que en producción. Si
 2. ✅ Agente completo con la API de Claude, todas las herramientas y roles (cliente / administrador)
 3. ✅ Seguridad: límites de uso, filtro de salida y pruebas contra *prompt injection*
 4. ✅ Evaluaciones del agente (42 casos) con reporte, y Gemini como proveedor alternativo
-5. Chat integrado en VisagShop, Docker, publicación en Render y README final
+5. ✅ Chat integrado en VisagShop (burbuja + intermediario que firma la identidad), Docker y publicación en Render
 
 ## 👤 Autor
 

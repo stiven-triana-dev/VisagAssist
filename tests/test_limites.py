@@ -44,7 +44,8 @@ def con_origen(ip: str) -> None:
 
 
 def preguntar(cliente: TestClient, encabezados: dict[str, str] | None = None) -> int:
-    return cliente.post("/api/v1/chat", json={"mensaje": "hola"}, headers=encabezados).status_code
+    respuesta = cliente.post("/api/v1/chat", json={"mensaje": "hola"}, headers=encabezados)
+    return int(respuesta.status_code)
 
 
 def test_un_invitado_alcanza_su_limite_por_hora(

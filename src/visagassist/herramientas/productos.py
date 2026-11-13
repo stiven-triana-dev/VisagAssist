@@ -23,6 +23,18 @@ def _columna_normalizada(columna: ColumnElement[str]) -> ColumnElement[str]:
     return func.translate(func.lower(columna), _CON_TILDE, _SIN_TILDE)
 
 
+def _raiz(palabra: str) -> str:
+    """Quita el plural para que "jeans" encuentre "Jean" y "pantalones" encuentre "Pantalón".
+
+    Como la búsqueda es por "contiene", buscar la raíz también encuentra el plural.
+    """
+    if len(palabra) > 4 and palabra.endswith("es") and palabra[-3] not in "aeiou":
+        return palabra[:-2]
+    if len(palabra) > 3 and palabra.endswith("s"):
+        return palabra[:-1]
+    return palabra
+
+
 class FiltrosBusqueda(BaseModel):
     """Argumentos que el modelo puede pasar a la herramienta (validados antes de consultar)."""
 
@@ -52,8 +64,8 @@ def buscar_productos(sesion: Session, filtros: FiltrosBusqueda) -> list[Producto
     condiciones: list[ColumnElement[bool]] = []
 
     if filtros.texto:
-        # Cada palabra debe aparecer en el nombre, la descripción o la categoría.
-        for palabra in _normalizar(filtros.texto).split()[:6]:
+        # Cada palabra (en singular) debe aparecer en el nombre, la descripción o la categoría.
+        for palabra in map(_raiz, _normalizar(filtros.texto).split()[:6]):
             condiciones.append(
                 or_(
                     _columna_normalizada(productos.c.name).contains(palabra, autoescape=True),

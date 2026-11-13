@@ -104,3 +104,24 @@ def test_orden_del_mas_caro_al_mas_barato(sesion: Session) -> None:
 def test_orden_invalido_se_rechaza() -> None:
     with pytest.raises(ValueError):
         FiltrosBusqueda(orden="al_azar")  # type: ignore[arg-type]
+
+
+def test_el_plural_encuentra_el_singular(sesion: Session) -> None:
+    # Hallado en producción: "jeans" no encontraba "Jean 1.1 · Azul roto".
+    assert ids(sesion, texto="jeans") == ["p004", "p003"]
+    assert ids(sesion, texto="jeans negros") == ["p004"]
+    assert ids(sesion, texto="gorras rojas") == ["p002"]
+    assert ids(sesion, texto="sudaderas grises") == ["p005"]
+
+
+def test_raiz_de_las_palabras() -> None:
+    from visagassist.herramientas.productos import _raiz
+
+    assert [_raiz(p) for p in ["jeans", "pantalones", "colores", "tenis", "gorra", "es"]] == [
+        "jean",
+        "pantalon",
+        "color",
+        "teni",
+        "gorra",
+        "es",
+    ]

@@ -7,6 +7,8 @@ La estructura la crean las migraciones de Alembic (carpeta migraciones/).
 
 from collections.abc import Iterator
 from dataclasses import asdict
+from datetime import datetime
+from decimal import Decimal
 from functools import lru_cache
 from uuid import UUID, uuid4
 
@@ -72,6 +74,7 @@ mensajes = Table(
     Column("tokens_cache_escritura", Integer, nullable=False, server_default="0"),
     Column("costo_usd", Numeric(12, 6), nullable=False, server_default="0"),
     Column("latencia_ms", Integer),
+    Column("origen", String(64)),  # huella (HMAC) de la IP, para el límite de invitados
     Column("creado_en", DateTime(timezone=True), nullable=False, server_default=func.now()),
     CheckConstraint("autor IN ('usuario', 'asistente')", name="mensajes_autor_valido"),
 )
@@ -124,9 +127,12 @@ def guardar_intercambio(
     pregunta: str,
     respuesta: RespuestaAgente,
     latencia_ms: int,
+    origen: str | None = None,
 ) -> None:
     sesion.execute(
-        insert(mensajes).values(conversacion_id=conversacion_id, autor="usuario", texto=pregunta)
+        insert(mensajes).values(
+            conversacion_id=conversacion_id, autor="usuario", texto=pregunta, origen=origen
+        )
     )
     sesion.execute(
         insert(mensajes).values(
@@ -149,6 +155,32 @@ def guardar_intercambio(
         .where(conversaciones.c.id == conversacion_id)
         .values(actualizada_en=func.now())
     )
+
+
+def preguntas_desde(
+    sesion: Session, desde: datetime, *, propietario: str | None = None, origen: str | None = None
+) -> int:
+    """Preguntas hechas desde un momento, por dueño (cuenta) o por origen (invitados)."""
+    consulta = (
+        select(func.count())
+        .select_from(mensajes.join(conversaciones))
+        .where(mensajes.c.autor == "usuario", mensajes.c.creado_en >= desde)
+    )
+    if propietario is not None:
+        consulta = consulta.where(conversaciones.c.propietario == propietario)
+    if origen is not None:
+        consulta = consulta.where(mensajes.c.origen == origen)
+    return int(sesion.scalar(consulta) or 0)
+
+
+def gasto_desde(sesion: Session, desde: datetime) -> Decimal:
+    """Costo total en dólares de las respuestas desde un momento (todas las personas)."""
+    total = sesion.scalar(
+        select(func.coalesce(func.sum(mensajes.c.costo_usd), 0)).where(
+            mensajes.c.creado_en >= desde
+        )
+    )
+    return Decimal(total or 0)
 
 
 def mensajes_de(

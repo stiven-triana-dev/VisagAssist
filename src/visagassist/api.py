@@ -6,18 +6,20 @@ from functools import lru_cache
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Query, status
+from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request, Response, status
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from visagassist import __version__, historial
+from visagassist import __version__, historial, limites
 from visagassist.agente import Agente
 from visagassist.claude import ClienteHTTPClaude, ErrorClaude
 from visagassist.config import obtener_configuracion
 from visagassist.db import obtener_sesion
 from visagassist.herramientas.productos import FiltrosBusqueda, ProductoResumen, buscar_productos
-from visagassist.identidad import INVITADO, Identidad, PaseInvalido, verificar_pase
+from visagassist.identidad import INVITADO, Identidad, PaseInvalido, Rol, verificar_pase
+from visagassist.seguridad import filtrar_respuesta, limpiar_mensaje
 
 registro_log = logging.getLogger(__name__)
 
@@ -32,6 +34,28 @@ app = FastAPI(
         "(`Authorization: Bearer <pase>`)."
     ),
 )
+
+
+@app.middleware("http")
+async def encabezados_de_seguridad(peticion: Request, siguiente):  # type: ignore[no-untyped-def]
+    respuesta: Response = await siguiente(peticion)
+    respuesta.headers["X-Content-Type-Options"] = "nosniff"
+    respuesta.headers["X-Frame-Options"] = "DENY"
+    respuesta.headers["Referrer-Policy"] = "no-referrer"
+    if peticion.url.path.startswith(("/api/v1/chat", "/api/v1/conversaciones")):
+        # Conversaciones privadas: que ningún navegador ni proxy las guarde en caché.
+        respuesta.headers["Cache-Control"] = "no-store"
+    return respuesta
+
+
+@app.exception_handler(limites.LimiteAlcanzado)
+def _limite_alcanzado(_peticion: Request, error: limites.LimiteAlcanzado) -> JSONResponse:
+    return JSONResponse(
+        {"detail": error.mensaje},
+        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+        headers={"Retry-After": str(error.reintentar_en)},
+    )
+
 
 SesionTienda = Annotated[Session, Depends(obtener_sesion)]
 SesionAsistente = Annotated[Session, Depends(historial.obtener_sesion_asistente)]
@@ -69,6 +93,25 @@ def obtener_agente() -> Agente:
             status.HTTP_503_SERVICE_UNAVAILABLE, "El asistente no está configurado (falta la clave)"
         )
     return agente
+
+
+def obtener_limites() -> limites.Limites:
+    c = obtener_configuracion()
+    return limites.Limites(
+        por_hora={
+            Rol.INVITADO: c.limite_hora_invitado,
+            Rol.CLIENTE: c.limite_hora_cliente,
+            Rol.ADMINISTRADOR: c.limite_hora_administrador,
+        },
+        presupuesto_diario_usd=c.presupuesto_diario_usd,
+    )
+
+
+def obtener_origen(peticion: Request) -> str:
+    """Huella de la conexión (la IP real llega por el proxy de Render: uvicorn --proxy-headers)."""
+    secreto = obtener_configuracion().secreto_identidad
+    ip = peticion.client.host if peticion.client else None
+    return limites.huella_origen(ip, secreto.get_secret_value() if secreto else "")
 
 
 Quien = Annotated[Identidad, Depends(obtener_identidad)]
@@ -112,8 +155,8 @@ class PeticionChat(BaseModel):
 
     @field_validator("mensaje")
     @classmethod
-    def _sin_espacios_sobrantes(cls, valor: str) -> str:
-        limpio = " ".join(valor.split())
+    def _limpiar(cls, valor: str) -> str:
+        limpio = limpiar_mensaje(valor)
         if not limpio:
             raise ValueError("El mensaje está vacío")
         return limpio
@@ -141,7 +184,12 @@ def chat(
     agente: AgenteListo,
     sesion_tienda: SesionTienda,
     sesion_asistente: SesionAsistente,
+    reglas: Annotated[limites.Limites, Depends(obtener_limites)],
+    origen: Annotated[str, Depends(obtener_origen)],
 ) -> RespuestaChat:
+    # Antes de gastar en el modelo: límites por hora y presupuesto diario.
+    limites.verificar(sesion_asistente, quien, origen, reglas)
+
     if peticion.conversacion_id is None:
         conversacion_id = historial.crear_conversacion(sesion_asistente, quien)
         contexto = []
@@ -163,8 +211,13 @@ def chat(
         ) from error
     latencia_ms = int((time.perf_counter() - inicio) * 1000)
 
+    texto_seguro, bloqueado = filtrar_respuesta(respuesta.texto)
+    if bloqueado:
+        registro_log.warning("Respuesta bloqueada por el filtro de salida")
+        respuesta.texto, respuesta.motivo = texto_seguro, "filtrado"
+
     historial.guardar_intercambio(
-        sesion_asistente, conversacion_id, peticion.mensaje, respuesta, latencia_ms
+        sesion_asistente, conversacion_id, peticion.mensaje, respuesta, latencia_ms, origen
     )
     sesion_asistente.commit()
     return RespuestaChat(

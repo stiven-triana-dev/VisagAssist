@@ -12,6 +12,7 @@ Si TEST_DATABASE_URL no existe, esas pruebas se omiten y las demás corren norma
 import os
 import re
 from collections.abc import Iterator
+from decimal import Decimal
 from pathlib import Path
 
 import pytest
@@ -27,6 +28,8 @@ from visagassist import api, historial
 from visagassist.agente import Agente
 from visagassist.config import obtener_configuracion
 from visagassist.db import crear_motor, fabrica_sesiones, obtener_sesion
+from visagassist.identidad import Rol
+from visagassist.limites import Limites
 
 # Configuración mínima para que la aplicación arranque en las pruebas (sin secretos reales).
 SECRETO_PRUEBAS = "secreto-de-pruebas-con-al-menos-32-bytes"
@@ -137,6 +140,10 @@ def cliente(
     api.app.dependency_overrides[obtener_sesion] = _sesion_tienda
     api.app.dependency_overrides[historial.obtener_sesion_asistente] = _sesion_asistente
     api.app.dependency_overrides[api.obtener_agente] = lambda: Agente(claude)
+    # Límites amplios por defecto; las pruebas de límites los cambian.
+    api.app.dependency_overrides[api.obtener_limites] = lambda: Limites(
+        por_hora=dict.fromkeys(Rol, 10_000), presupuesto_diario_usd=Decimal(1_000)
+    )
     with TestClient(api.app) as c:
         yield c
     api.app.dependency_overrides.clear()

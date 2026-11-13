@@ -1,5 +1,6 @@
 """Configuración leída de variables de entorno (o de un archivo .env en desarrollo)."""
 
+from decimal import Decimal
 from functools import lru_cache
 
 from pydantic import Field, PostgresDsn, SecretStr
@@ -26,6 +27,14 @@ class Configuracion(BaseSettings):
 
     # Máximo de resultados que una herramienta devuelve al modelo.
     limite_resultados: int = Field(default=10, ge=1, le=50, alias="LIMITE_RESULTADOS")
+
+    # Límites de uso (ver limites.py): preguntas por hora y gasto máximo diario en dólares.
+    limite_hora_invitado: int = Field(default=15, ge=1, alias="LIMITE_HORA_INVITADO")
+    limite_hora_cliente: int = Field(default=30, ge=1, alias="LIMITE_HORA_CLIENTE")
+    limite_hora_administrador: int = Field(default=60, ge=1, alias="LIMITE_HORA_ADMINISTRADOR")
+    presupuesto_diario_usd: Decimal = Field(
+        default=Decimal("1.00"), ge=0, alias="PRESUPUESTO_DIARIO_USD"
+    )
 
 
 @lru_cache

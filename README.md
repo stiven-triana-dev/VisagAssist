@@ -10,7 +10,7 @@
 ("¿tienen jeans talla 32 por menos de 160 mil?", "¿cómo va mi pedido?") y un agente con la
 API de Claude responde **consultando los datos reales de la tienda** mediante herramientas fijas.
 
-> **Estado: etapa 2 de 5.** Ya funcionan el agente con la API de Claude (Haiku 5.5), 7 herramientas, roles invitado / cliente / administrador con identidad firmada, e historial con tokens y costo por respuesta.
+> **Estado: etapa 3 de 5.** Ya funcionan el agente con la API de Claude (Haiku 5.5), 7 herramientas, roles invitado / cliente / administrador con identidad firmada, historial con tokens y costo por respuesta, límites de uso y defensas contra *prompt injection*.
 
 ## 🔐 La idea central: la IA nunca escribe SQL
 
@@ -24,8 +24,17 @@ lista cerrada y darle argumentos; cada herramienta es una consulta fija y parame
 | Rol de solo lectura | El usuario de PostgreSQL solo tiene permiso `SELECT` |
 | Conexión de solo lectura | Cada conexión abre en `READ ONLY`: aunque el rol tuviera más permisos, PostgreSQL rechaza escrituras |
 | Consultas acotadas | `statement_timeout` de 5 s y límite de resultados |
+| Identidad fuera del modelo | Quién pregunta llega en un pase firmado (JWT HS256) por VisagShop; `mis_pedidos` ni siquiera tiene un argumento de usuario |
+| Permisos revisados dos veces | El modelo solo ve las herramientas de su rol, y al ejecutar se vuelve a revisar el permiso |
+| Datos mínimos | Las herramientas no leen teléfono, dirección ni documento de los clientes |
+| Entrada limpia | Se quitan caracteres invisibles (ancho cero, inversión de texto) y se normaliza el texto |
+| Filtro de salida | Si la respuesta contiene fragmentos de las instrucciones internas o una clave de API, se reemplaza |
+| Límites de uso | Preguntas por hora (invitados por huella HMAC de la IP, clientes por cuenta) y presupuesto diario en dólares, revisados antes de llamar al modelo; responde 429 con `Retry-After` |
 
-Hay pruebas para cada barrera (ver `tests/test_solo_lectura.py` y las pruebas de inyección SQL
+Hay pruebas para cada barrera. En `tests/test_seguridad.py` un Claude simulado *obedece* al
+atacante (pide pedidos ajenos, herramientas de administrador o inventadas, revela sus
+instrucciones) y se comprueba que, aun así, el sistema no entrega nada indebido. Ver también
+`tests/test_solo_lectura.py`, `tests/test_limites.py` y las pruebas de inyección SQL
 en `tests/test_productos.py`).
 
 ## 🧰 Herramientas
@@ -78,7 +87,7 @@ Las pruebas de integración crean la estructura de VisagShop en una base vacía,
 conocidos y se conectan con un rol de solo lectura, igual que en producción. Sin
 `TEST_DATABASE_URL`, esas pruebas se omiten y el resto corre normal.
 
-**Resultado actual:** 140 pruebas, 0 fallos (Claude simulado: las pruebas no gastan saldo).
+**Resultado actual:** 170 pruebas, 0 fallos (Claude simulado: las pruebas no gastan saldo).
 
 ## 🧭 Decisiones técnicas
 
@@ -96,7 +105,7 @@ conocidos y se conectan con un rol de solo lectura, igual que en producción. Si
 
 1. ✅ Base del proyecto, conexión de solo lectura y primera herramienta con pruebas
 2. ✅ Agente completo con la API de Claude, todas las herramientas y roles (cliente / administrador)
-3. Seguridad: límite de peticiones y pruebas contra *prompt injection*
+3. ✅ Seguridad: límites de uso, filtro de salida y pruebas contra *prompt injection*
 4. Evaluaciones del agente (~40 preguntas) con reporte
 5. Chat integrado en VisagShop, Docker, publicación en Render y README final
 

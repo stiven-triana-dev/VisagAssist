@@ -1,21 +1,3 @@
-"""Adaptador para usar Gemini (Google) como proveedor del agente.
-
-El agente está escrito con el formato de la API de Claude (Messages API). Este adaptador
-recibe esa misma petición, la traduce al formato de Gemini (generateContent), llama a la API
-y traduce la respuesta de vuelta. Así el agente, las herramientas, la seguridad y las pruebas
-no cambian: solo cambia quién responde. Se usa con el plan gratuito de Google AI Studio.
-
-Equivalencias principales:
-  system                      -> systemInstruction
-  tools[] (input_schema)      -> tools[0].functionDeclarations[] (parametersJsonSchema)
-  rol "assistant"             -> rol "model"
-  bloque tool_use             -> parte functionCall
-  bloque tool_result          -> parte functionResponse (con el nombre de la herramienta)
-  stop_reason                 <- finishReason (STOP, MAX_TOKENS, SAFETY...)
-Gemini firma su razonamiento (thoughtSignature) y pide recibir la firma de vuelta: cada
-bloque traducido guarda la parte original de Gemini en "_parte_gemini" y se devuelve igual.
-"""
-
 import time
 from collections.abc import Callable
 from typing import Any
@@ -33,9 +15,6 @@ from visagassist.claude import (
 URL_BASE = "https://generativelanguage.googleapis.com/v1beta/models"
 PARTE_ORIGINAL = "_parte_gemini"
 RECHAZOS = {"SAFETY", "PROHIBITED_CONTENT", "BLOCKLIST", "SPII", "RECITATION", "IMAGE_SAFETY"}
-
-
-# ----------------------------------------------------------------- petición
 
 
 def traducir_peticion(peticion: dict[str, Any]) -> dict[str, Any]:
@@ -74,7 +53,7 @@ def _contenidos(mensajes: list[dict[str, Any]]) -> list[dict[str, Any]]:
             continue
         partes: list[dict[str, Any]] = []
         for bloque in contenido:
-            if PARTE_ORIGINAL in bloque:  # vino de Gemini: se devuelve tal cual (con su firma)
+            if PARTE_ORIGINAL in bloque:
                 partes.append(bloque[PARTE_ORIGINAL])
                 if bloque.get("type") == "tool_use":
                     nombres_por_id[bloque["id"]] = bloque["name"]
@@ -104,13 +83,9 @@ def _contenidos(mensajes: list[dict[str, Any]]) -> list[dict[str, Any]]:
                         }
                     }
                 )
-            # Los bloques de razonamiento sin parte original no se envían.
         if partes:
             contenidos.append({"role": rol, "parts": partes})
     return contenidos
-
-
-# ----------------------------------------------------------------- respuesta
 
 
 def traducir_respuesta(datos: dict[str, Any], modelo_pedido: str) -> RespuestaClaude:
@@ -118,7 +93,6 @@ def traducir_respuesta(datos: dict[str, Any], modelo_pedido: str) -> RespuestaCl
     modelo = str(datos.get("modelVersion") or modelo_pedido)
     candidatos = datos.get("candidates") or []
     if not candidatos:
-        # Gemini bloqueó la pregunta antes de responder (promptFeedback.blockReason).
         return RespuestaClaude([], "refusal", uso, modelo)
 
     candidato = candidatos[0]
@@ -162,12 +136,7 @@ def _uso(datos: dict[str, Any]) -> Uso:
     )
 
 
-# ----------------------------------------------------------------- cliente
-
-
 class ClienteGemini:
-    """Mismo contrato que ClienteHTTPClaude: recibe y devuelve el formato de Claude."""
-
     def __init__(
         self,
         clave_api: str,

@@ -1,5 +1,3 @@
-"""Pase firmado que identifica al cliente o al administrador."""
-
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 

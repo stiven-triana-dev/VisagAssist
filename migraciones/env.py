@@ -1,5 +1,3 @@
-"""Entorno de Alembic: conecta con la base propia del asistente y aplica las migraciones."""
-
 import os
 
 from alembic import context

@@ -1,10 +1,3 @@
-"""Historial de conversaciones y costos por respuesta.
-
-Revision ID: 0001
-Revises:
-Create Date: 2026-11-12
-"""
-
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects.postgresql import JSONB

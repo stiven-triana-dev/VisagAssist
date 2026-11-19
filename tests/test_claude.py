@@ -1,5 +1,3 @@
-"""Cliente HTTP de Claude con un transporte simulado: no hay llamadas reales ni gasto."""
-
 import json
 from decimal import Decimal
 from typing import Any
@@ -26,8 +24,6 @@ RESPUESTA_OK = {
 
 
 class Servidor:
-    """Devuelve las respuestas en orden y guarda lo que recibió."""
-
     def __init__(self, *respuestas: httpx.Response | Exception) -> None:
         self.respuestas = list(respuestas)
         self.peticiones: list[httpx.Request] = []
@@ -113,7 +109,6 @@ def test_sin_conexion_persistente_lanza_error_claro() -> None:
 
 def test_costo_con_haiku() -> None:
     uso = Uso(entrada=1_000_000, salida=1_000_000, cache_lectura=1_000_000, cache_escritura=0)
-    # 0,10 (entrada) + 0,50 (salida) + 0,01 (lectura de caché a 0,1×)
     assert costo_usd("claude-haiku-5-5", uso) == Decimal("0.610000")
 
 

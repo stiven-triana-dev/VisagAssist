@@ -1,5 +1,3 @@
-"""API HTTP de VisagAssist (FastAPI). La documentación interactiva queda en /docs."""
-
 import logging
 import time
 from functools import lru_cache
@@ -44,7 +42,6 @@ async def encabezados_de_seguridad(peticion: Request, siguiente):  # type: ignor
     respuesta.headers["X-Frame-Options"] = "DENY"
     respuesta.headers["Referrer-Policy"] = "no-referrer"
     if peticion.url.path.startswith(("/api/v1/chat", "/api/v1/conversaciones")):
-        # Conversaciones privadas: que ningún navegador ni proxy las guarde en caché.
         respuesta.headers["Cache-Control"] = "no-store"
     return respuesta
 
@@ -60,9 +57,6 @@ def _limite_alcanzado(_peticion: Request, error: limites.LimiteAlcanzado) -> JSO
 
 SesionTienda = Annotated[Session, Depends(obtener_sesion)]
 SesionAsistente = Annotated[Session, Depends(historial.obtener_sesion_asistente)]
-
-
-# ----------------------------------------------------------------- dependencias
 
 
 def obtener_identidad(authorization: Annotated[str | None, Header()] = None) -> Identidad:
@@ -112,12 +106,6 @@ Quien = Annotated[Identidad, Depends(obtener_identidad)]
 
 
 def obtener_origen(peticion: Request, quien: Quien) -> str:
-    """Huella de la conexión para los límites de uso.
-
-    Si VisagShop hace de intermediario, el origen viene dentro del pase firmado (la IP que se ve
-    aquí sería la de su servidor). Si no, se usa la IP real, que llega por el proxy de Render
-    gracias a ``uvicorn --proxy-headers``.
-    """
     secreto = obtener_configuracion().secreto_identidad
     clave = secreto.get_secret_value() if secreto else ""
     if quien.origen:
@@ -129,9 +117,6 @@ def obtener_origen(peticion: Request, quien: Quien) -> str:
 AgenteListo = Annotated[Agente, Depends(obtener_agente)]
 
 
-# ----------------------------------------------------------------- estado
-
-
 class Estado(BaseModel):
     estado: str
     aplicacion: str
@@ -141,7 +126,6 @@ class Estado(BaseModel):
 
 @app.get("/api/v1/estado", tags=["Estado"], summary="Salud del servicio")
 def estado() -> Estado:
-    """No toca la base de datos: así una revisión periódica no despierta a Neon."""
     return Estado(estado="OK", aplicacion="VisagAssist", version=__version__)
 
 
@@ -150,12 +134,9 @@ def estado_con_base(sesion: SesionTienda) -> Estado:
     try:
         sesion.execute(text("SELECT 1"))
         base = "OK"
-    except Exception:  # la salud no debe romperse si la base está caída
+    except Exception:
         base = "sin conexión"
     return Estado(estado="OK", aplicacion="VisagAssist", version=__version__, base_de_datos=base)
-
-
-# ----------------------------------------------------------------- chat
 
 
 class PeticionChat(BaseModel):
@@ -198,7 +179,6 @@ def chat(
     reglas: Annotated[limites.Limites, Depends(obtener_limites)],
     origen: Annotated[str, Depends(obtener_origen)],
 ) -> RespuestaChat:
-    # Antes de gastar en el modelo: límites por hora y presupuesto diario.
     limites.verificar(sesion_asistente, quien, origen, reglas)
 
     if peticion.conversacion_id is None:
@@ -267,9 +247,6 @@ def ver_conversacion(
         MensajeHistorial(autor=str(f["autor"]), texto=str(f["texto"]), fecha=str(f["fecha"]))
         for f in filas
     ]
-
-
-# ----------------------------------------------------------------- herramientas
 
 
 @app.get(

@@ -1,10 +1,3 @@
-"""Tablas de VisagShop que el asistente puede leer.
-
-Se describen solo las columnas que se usan: VisagAssist no crea ni modifica tablas,
-la estructura la define y migra VisagShop. Con estas definiciones SQLAlchemy arma las
-consultas con parámetros, así nunca se concatena texto del usuario dentro del SQL.
-"""
-
 from sqlalchemy import (
     Boolean,
     Column,
@@ -67,8 +60,6 @@ productos_colores = Table(
     Column("position", SmallInteger, nullable=False),
 )
 
-# Pedidos: solo las columnas que el asistente necesita. Teléfono, dirección y documento
-# del cliente NO se describen aquí, así ninguna herramienta puede leerlos por error.
 pedidos = Table(
     "orders",
     metadatos,

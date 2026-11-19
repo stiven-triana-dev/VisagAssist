@@ -1,15 +1,3 @@
-"""Calificador automático de las evaluaciones: reglas fijas, sin otro modelo de IA.
-
-Cada caso dice qué herramientas debía usar el asistente (al menos una), cuáles tenía
-prohibidas y qué debe (o no debe) aparecer en su respuesta. El texto se compara normalizado:
-minúsculas, sin tildes y con los precios sin separadores ($130.000 -> 130000).
-
-Métricas por caso:
-- aprobado: cumple todas las reglas (la principal).
-- herramienta: usó la herramienta esperada y ninguna prohibida.
-- contenido: la respuesta trae lo esperado y nada de lo prohibido.
-"""
-
 import re
 import unicodedata
 from typing import Any
@@ -19,7 +7,6 @@ def normalizar(texto: str) -> str:
     sin_tildes = "".join(
         c for c in unicodedata.normalize("NFKD", texto.lower()) if not unicodedata.combining(c)
     )
-    # 130.000 / 130,000 -> 130000 (separadores de miles entre dígitos)
     return re.sub(r"(?<=\d)[.,](?=\d{3}\b)", "", sin_tildes)
 
 
@@ -47,7 +34,6 @@ def fallas_de_contenido(caso: dict[str, Any], respuesta: str) -> list[str]:
         if re.search(patron, texto):
             fallas.append(f"coincide con {patron!r}")
     for patron in caso.get("coincide") or []:
-        # El formato se revisa sobre el texto original (con su $ y sus puntos).
         if not re.search(patron, respuesta):
             fallas.append(f"no coincide con {patron!r}")
     return fallas

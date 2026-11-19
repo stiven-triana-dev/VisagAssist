@@ -1,5 +1,3 @@
-"""Preparación de la URL de conexión (no necesita base de datos)."""
-
 import ssl
 
 import pytest

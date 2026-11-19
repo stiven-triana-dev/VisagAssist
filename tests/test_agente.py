@@ -1,5 +1,3 @@
-"""Bucle del agente con Claude simulado y herramientas reales sobre PostgreSQL."""
-
 import json
 from decimal import Decimal
 from uuid import UUID
@@ -130,7 +128,6 @@ def test_suma_el_uso_de_todas_las_rondas_y_calcula_el_costo(sesion: Session) -> 
     )
     respuesta = Agente(claude).responder(sesion, INVITADO, [], "¿qué venden?")
     assert respuesta.uso == Uso(entrada=4500, salida=130, cache_lectura=2000)
-    # 4500 × 0,10 + 130 × 0,50 + 2000 × 0,01 = 450 + 65 + 20 = 535 por millón
     assert respuesta.costo_usd == Decimal("0.000535")
 
 
@@ -153,7 +150,7 @@ def test_forma_de_la_peticion(sesion: Session) -> None:
     assert peticion["model"] == "claude-haiku-5-5"
     assert peticion["cache_control"] == {"type": "ephemeral"}
     assert peticion["output_config"] == {"effort": "low"}
-    assert "temperature" not in peticion  # la versión 2026-10-21 de la API la rechaza
+    assert "temperature" not in peticion
     assert "administrador" in peticion["system"][0]["text"]
     assert {t["name"] for t in peticion["tools"]} >= {"resumen_ventas", "pedidos_pendientes"}
 

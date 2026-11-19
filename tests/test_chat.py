@@ -1,6 +1,3 @@
-"""Ruta /api/v1/chat de punta a punta: identidad, agente (Claude simulado), herramientas
-reales sobre PostgreSQL e historial con costos en la base propia."""
-
 import json
 from datetime import timedelta
 from decimal import Decimal
@@ -64,7 +61,7 @@ def test_un_invitado_pregunta_y_se_guarda_con_su_costo(
         .order_by(mensajes.c.id)
     ).all()
     assert [(f.autor, f.texto) for f in filas] == [
-        ("usuario", "¿qué gorras tienen?"),  # espacios normalizados
+        ("usuario", "¿qué gorras tienen?"),
         ("asistente", "Hay 2."),
     ]
     assert filas[1].costo_usd == Decimal("0.000300")

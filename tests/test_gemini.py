@@ -1,5 +1,3 @@
-"""Adaptador de Gemini: traducción de ida y vuelta, sin llamar a la API real."""
-
 import json
 from decimal import Decimal
 from typing import Any
@@ -77,9 +75,6 @@ def gemini(*partes: dict[str, Any], motivo: str = "STOP", **extra: Any) -> dict[
     }
 
 
-# ------------------------------------------------------------------ petición
-
-
 def test_traduce_sistema_herramientas_y_limite() -> None:
     cuerpo = traducir_peticion(PETICION)
     assert cuerpo["systemInstruction"] == {"parts": [{"text": "Eres VisagAssist."}]}
@@ -87,7 +82,6 @@ def test_traduce_sistema_herramientas_y_limite() -> None:
     assert declaracion["name"] == "ver_producto"
     assert declaracion["parametersJsonSchema"]["properties"] == {"producto_id": {"type": "string"}}
     assert cuerpo["generationConfig"] == {"maxOutputTokens": 1000}
-    # Lo que es propio de Claude no se envía a Gemini.
     assert "cache_control" not in cuerpo
     assert "output_config" not in cuerpo
 
@@ -99,7 +93,6 @@ def test_traduce_la_conversacion_con_roles_y_resultados_de_herramientas() -> Non
     assert contenidos[3]["parts"] == [
         {"functionCall": {"id": "t1", "name": "ver_producto", "args": {"producto_id": "p005"}}}
     ]
-    # El resultado lleva el nombre de la herramienta (Gemini lo exige) y el mismo id.
     assert contenidos[4]["parts"] == [
         {
             "functionResponse": {
@@ -134,9 +127,6 @@ def test_las_partes_de_gemini_vuelven_intactas_con_su_firma() -> None:
     assert traducir_peticion(peticion)["contents"][1]["parts"] == [original]
 
 
-# ------------------------------------------------------------------ respuesta
-
-
 def test_llamada_a_herramienta_se_vuelve_tool_use() -> None:
     respuesta = traducir_respuesta(
         gemini(
@@ -166,7 +156,7 @@ def test_texto_final_y_uso_de_tokens() -> None:
     respuesta = traducir_respuesta(gemini({"text": "Cuesta $85.000."}), "gemini-flash-latest")
     assert respuesta.motivo_parada == "end_turn"
     assert respuesta.contenido[0]["text"] == "Cuesta $85.000."
-    assert respuesta.uso == Uso(entrada=900, salida=100)  # salida incluye el razonamiento
+    assert respuesta.uso == Uso(entrada=900, salida=100)
 
 
 def test_el_razonamiento_no_se_muestra_como_texto() -> None:
@@ -207,9 +197,6 @@ def test_gemini_del_plan_gratuito_cuesta_cero() -> None:
     assert costo_usd("gemini-flash-latest", Uso(entrada=10**6, salida=10**6)) == Decimal("0.000000")
 
 
-# ------------------------------------------------------------------ cliente HTTP
-
-
 def test_cliente_usa_endpoint_y_encabezado_de_google() -> None:
     peticiones: list[httpx.Request] = []
 
@@ -246,9 +233,6 @@ def test_cliente_reporta_errores_de_google() -> None:
     assert error.value.estado == 400
 
 
-# ------------------------------------------------------------------ elección de proveedor
-
-
 def configuracion(**valores: str) -> Configuracion:
     datos: dict[str, Any] = {"DATABASE_URL": "postgresql+pg8000://a:b@localhost/c", **valores}
     return Configuracion(_env_file=None, **datos)  # type: ignore[call-arg]
@@ -283,12 +267,8 @@ def test_la_linea_vacia_del_env_cuenta_como_sin_clave() -> None:
     assert configuracion(GEMINI_API_KEY="x").gemini_api_key == SecretStr("x")
 
 
-# ------------------------------------------------------------------ agente completo
-
-
 @pytest.mark.integracion
 def test_el_agente_funciona_igual_con_gemini(sesion: Session) -> None:
-    """Agente + herramientas reales sobre PostgreSQL, con Gemini simulado por HTTP."""
     guion = [
         gemini(
             {
@@ -316,7 +296,7 @@ def test_el_agente_funciona_igual_con_gemini(sesion: Session) -> None:
     assert respuesta.texto == "Hay 2 gorras desde $45.000."
     assert [h.nombre for h in respuesta.herramientas] == ["buscar_productos"]
     segunda = recibidas[1]["contents"]
-    assert segunda[1]["parts"][0]["thoughtSignature"] == "firma-1"  # la firma vuelve intacta
+    assert segunda[1]["parts"][0]["thoughtSignature"] == "firma-1"
     resultado = segunda[2]["parts"][0]["functionResponse"]
     assert resultado["name"] == "buscar_productos"
     assert [p["id"] for p in json.loads(resultado["response"]["resultado"])] == ["p001", "p002"]

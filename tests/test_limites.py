@@ -1,5 +1,3 @@
-"""Límites de uso: preguntas por hora y presupuesto diario (protegen el saldo de la API)."""
-
 from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
@@ -24,7 +22,6 @@ ANDRES = Identidad(Rol.CLIENTE, UUID("11111111-1111-4111-8111-111111111111"))
 
 @pytest.fixture(autouse=True)
 def historial_vacio(sesion_asistente: Session) -> Iterator[None]:
-    """Cada prueba de límites empieza sin preguntas ni gasto registrados."""
     sesion_asistente.execute(delete(conversaciones))
     sesion_asistente.commit()
     yield
@@ -61,7 +58,7 @@ def test_un_invitado_alcanza_su_limite_por_hora(
     assert respuesta.status_code == 429
     assert respuesta.headers["Retry-After"] == "3600"
     assert "muchas preguntas" in respuesta.json()["detail"]
-    assert len(claude.peticiones) == 2  # la tercera no llegó al modelo: no gastó saldo
+    assert len(claude.peticiones) == 2
 
 
 def test_otro_invitado_desde_otra_conexion_no_se_ve_afectado(
@@ -84,7 +81,7 @@ def test_un_cliente_se_cuenta_por_su_cuenta_y_no_por_la_conexion(
     claude.guion += [texto("a"), texto("b")]
     con_origen("200.1.1.1")
     assert preguntar(cliente, pase) == 200
-    con_origen("190.2.2.2")  # cambiar de red no le da más preguntas
+    con_origen("190.2.2.2")
     assert preguntar(cliente, pase) == 429
     otra = {
         "Authorization": f"Bearer {emitir_pase(Identidad(Rol.CLIENTE, uuid4()), SECRETO_PRUEBAS)}"
@@ -172,7 +169,6 @@ def test_la_huella_no_guarda_la_ip_y_depende_del_secreto() -> None:
 
 
 def test_inicio_del_dia_en_hora_de_colombia() -> None:
-    # 3 a. m. UTC del 13 de noviembre = 10 p. m. del 12 de noviembre en Colombia.
     momento = datetime(2026, 11, 13, 3, 0, tzinfo=UTC)
     inicio = inicio_del_dia(momento)
     assert (inicio.year, inicio.month, inicio.day, inicio.hour) == (2026, 11, 12, 0)
@@ -181,10 +177,8 @@ def test_inicio_del_dia_en_hora_de_colombia() -> None:
 def test_invitados_detras_de_visagshop_tienen_limites_separados(
     cliente: TestClient, claude: ClaudeSimulado
 ) -> None:
-    # VisagShop hace de intermediario: la IP es siempre la de su servidor, pero cada pase
-    # firmado trae la huella del visitante real, así uno no gasta las preguntas del otro.
     limites(invitado=1)
-    api.app.dependency_overrides.pop(api.obtener_origen, None)  # se usa el origen real
+    api.app.dependency_overrides.pop(api.obtener_origen, None)
     claude.guion += [texto("a"), texto("b")]
 
     def pase_de(visitante: str) -> dict[str, str]:

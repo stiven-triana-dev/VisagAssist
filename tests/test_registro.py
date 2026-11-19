@@ -1,5 +1,3 @@
-"""Definiciones que se envían a Claude y reparto de herramientas por rol (sin base de datos)."""
-
 from visagassist.herramientas.registro import HERRAMIENTAS, herramientas_para
 from visagassist.identidad import Rol
 
@@ -36,7 +34,6 @@ def test_definiciones_en_formato_de_la_api() -> None:
 
 
 def test_mis_pedidos_no_tiene_argumento_de_usuario() -> None:
-    # El id del cliente sale de la identidad firmada; el modelo ni siquiera puede proponerlo.
     mis_pedidos = next(h for h in HERRAMIENTAS if h.nombre == "mis_pedidos")
     propiedades = mis_pedidos.definicion_api()["input_schema"]["properties"]
     assert set(propiedades) == {"numero", "limite"}

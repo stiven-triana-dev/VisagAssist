@@ -190,6 +190,20 @@ además construye la imagen Docker y comprueba que arranca.
 - **Los `%` y `_` del usuario se buscan literalmente** (`autoescape=True`): no funcionan como
   comodines de `LIKE`.
 
+## Lo que aprendí con este proyecto
+
+Quería un proyecto en Python con IA que no fuera un chat genérico, sino uno que respondiera con los datos reales de mi tienda. La primera decisión fue la más importante: el modelo nunca escribe SQL. Solo puede elegir entre siete herramientas fijas que yo programé, y además se conecta a la base con un rol de PostgreSQL que solo puede leer ocho tablas, sin acceso a usuarios ni sesiones. Así, aunque alguien engañe al modelo con *prompt injection*, no hay forma de que modifique datos o vea cuentas ajenas.
+
+Mi computador me obligó a cambiar de planes dos veces. El Control de aplicaciones inteligente de Windows bloqueaba las librerías compiladas: primero psycopg, el conector de PostgreSQL, y luego el SDK oficial de Anthropic. Cambié a pg8000, que está escrito en Python puro, y escribí a mano las llamadas a la API con httpx, incluido el ciclo de herramientas, los reintentos y el cálculo de costo. Fue más trabajo, pero entendí cómo funciona por dentro el *tool use*.
+
+Tampoco tenía dinero para la API de Claude, así que agregué Gemini, que tiene un nivel gratuito, y dejé el proveedor intercambiable con una variable de entorno. Gemini trae sus propias reglas: el modelo más nuevo solo permitía 20 preguntas al día gratis, y en las respuestas con herramientas hay que devolver intacta una firma de razonamiento o la siguiente llamada falla.
+
+Las evaluaciones me enseñaron a medir en vez de suponer. Escribí 42 casos con lo que el asistente debe y no debe responder. La primera versión aprobó 39; ajusté las instrucciones del sistema en dos rondas, revisando cada fallo, hasta llegar a 42 de 42.
+
+Al publicarlo en Render aparecieron errores que no vi en local. La dirección de la base no funcionaba tal como la copia Neon (`postgresql://`), y luego tampoco cuando se pegaba con espacios, comillas o en formato de `psql`; ahora el servicio la acepta en cualquiera de esas formas. Probando la versión publicada descubrí que buscar «jeans» no encontraba «Jean», y lo arreglé buscando cada palabra en singular, con su prueba.
+
+Como el plan gratis de Render tiene 750 horas al mes compartidas con mis otros proyectos, dejé que el asistente se duerma. La revisión de salud no toca la base de datos, para no despertar a Neon sin necesidad, y VisagShop despierta al asistente apenas el cliente abre el chat. Todo esto lo cuidan 380 pruebas con pytest, ruff y mypy en modo estricto, que corren en GitHub Actions en cada cambio.
+
 ## 🗺️ Etapas
 
 1. ✅ Base del proyecto, conexión de solo lectura y primera herramienta con pruebas

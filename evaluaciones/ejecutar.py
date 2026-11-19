@@ -1,22 +1,3 @@
-"""Corre las evaluaciones del asistente contra Claude real y guarda resultados y conversaciones.
-
-Uso (desde la carpeta VisagAssist, con el .env configurado):
-    python -m evaluaciones.ejecutar --casos c01,c02      # prueba piloto con pocos casos
-    python -m evaluaciones.ejecutar                       # todos los casos
-    python -m evaluaciones.ejecutar --aprobar-arnes       # solo la persona dueña del proyecto,
-                                                          # después de revisar cambios del ejecutor
-
-Cada pregunta pasa por la ruta REAL /api/v1/chat (pase firmado, límites, agente, herramientas
-sobre la base, filtro de salida). Lo único que se agrega es una "grabadora" alrededor del
-cliente de Claude para guardar la conversación completa de cada caso.
-
-Salida en .claude/hillclimb/asistente/<variante>/:
-  results.jsonl  una línea por caso (calificación, tokens, latencia), escrita al terminar cada uno
-  traces/        la conversación completa de cada caso
-  errors.jsonl   intentos que fallaron por algo ajeno al modelo (red, tiempo máximo...)
-Se puede interrumpir y volver a correr: salta los casos que ya están en results.jsonl.
-"""
-
 import argparse
 import copy
 import hashlib
@@ -50,7 +31,6 @@ ARCHIVOS_DEL_ARNES = [
     RAIZ / "evaluaciones" / "casos.json",
 ]
 
-# Personas de la copia local de la tienda (base visag_legacy).
 PERSONAS = {
     "invitado": None,
     "sofia": Identidad(Rol.CLIENTE, UUID("e8e092b5-ec08-40fc-a8e5-04a1ba0d5a65"), "Sofía"),
@@ -70,8 +50,6 @@ ESTADO_INICIAL = {
 
 
 class Grabadora:
-    """Envuelve al cliente real de Claude y guarda cada petición con su respuesta."""
-
     def __init__(self, cliente: ClienteClaude) -> None:
         self._cliente = cliente
         self.llamadas: list[tuple[dict[str, Any], RespuestaClaude]] = []
@@ -80,9 +58,6 @@ class Grabadora:
         respuesta = self._cliente.crear_mensaje(peticion)
         self.llamadas.append((copy.deepcopy(peticion), respuesta))
         return respuesta
-
-
-# ----------------------------------------------------------------- arnés
 
 
 def huella_del_arnes() -> str:
@@ -94,7 +69,6 @@ def huella_del_arnes() -> str:
 
 
 def revisar_arnes(aprobar: bool) -> None:
-    """Si el ejecutor, el calificador o los casos cambian, alguien debe aprobarlo a propósito."""
     CARPETA_EVAL.mkdir(parents=True, exist_ok=True)
     ruta = CARPETA_EVAL / "_state.json"
     estado = json.loads(ruta.read_text(encoding="utf-8")) if ruta.exists() else ESTADO_INICIAL
@@ -111,9 +85,6 @@ def revisar_arnes(aprobar: bool) -> None:
             file=sys.stderr,
         )
         sys.exit(2)
-
-
-# ----------------------------------------------------------------- un caso
 
 
 def correr_caso(
@@ -178,7 +149,6 @@ def correr_caso(
 
 
 def traza(peticion: dict[str, Any], respuesta: RespuestaClaude, rol: str) -> list[dict[str, Any]]:
-    """Conversación completa en el formato del visor de reportes."""
     turnos: list[dict[str, Any]] = [
         {"role": "system", "content": peticion["system"][0]["text"]},
     ]
@@ -212,9 +182,6 @@ def traza(peticion: dict[str, Any], respuesta: RespuestaClaude, rol: str) -> lis
             elif tipo == "tool_result":
                 turnos.append({"role": "tool_result", "content": bloque.get("content", "")})
     return turnos
-
-
-# ----------------------------------------------------------------- corrida
 
 
 def intervalo_wilson(aprobados: int, total: int) -> tuple[float, float]:
@@ -270,7 +237,6 @@ def main() -> None:
     api.app.dependency_overrides[api.obtener_agente] = lambda: Agente(
         grabadora, modelo=proveedor.modelo
     )
-    # La evaluación no debe frenarse por los límites de uso de la demo pública.
     api.app.dependency_overrides[api.obtener_limites] = lambda: Limites(
         por_hora=dict.fromkeys(Rol, 100_000), presupuesto_diario_usd=Decimal(1_000)
     )
@@ -289,7 +255,7 @@ def main() -> None:
                     _error(carpeta, caso["id"], rep, "timeout", "superó el tiempo máximo")
                     print(f"{caso['id']}  TIEMPO AGOTADO")
                     continue
-                except Exception as error:  # red, API, base: no es culpa del modelo
+                except Exception as error:
                     _error(carpeta, caso["id"], rep, "harness_error", repr(error))
                     print(f"{caso['id']}  ERROR {error!r}")
                     continue

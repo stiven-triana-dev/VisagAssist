@@ -1,5 +1,3 @@
-"""Lectura de la configuración desde variables de entorno."""
-
 import pytest
 from pydantic import ValidationError
 

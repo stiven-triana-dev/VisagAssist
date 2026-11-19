@@ -1,10 +1,3 @@
-"""Lista cerrada de herramientas, con los roles que pueden usar cada una.
-
-El modelo de IA solo ve las herramientas de su rol. Aun así, al ejecutar se vuelve a
-revisar el permiso (defensa en profundidad): si por un error o un truco el modelo pidiera
-una herramienta de administrador siendo cliente, se rechaza.
-"""
-
 import json
 import logging
 from collections.abc import Callable
@@ -37,7 +30,6 @@ class Herramienta:
     ejecutar: Ejecutor
 
     def definicion_api(self) -> dict[str, Any]:
-        """Definición en el formato de la API de Claude (name, description, input_schema)."""
         esquema = self.argumentos.model_json_schema()
         esquema.pop("title", None)
         esquema.pop("description", None)
@@ -51,7 +43,7 @@ class Herramienta:
 def _mis_pedidos(
     sesion: Session, args: pedidos.ArgumentosMisPedidos, quien: Identidad
 ) -> Resultado:
-    if quien.usuario_id is None:  # no debería pasar: la herramienta es solo de clientes
+    if quien.usuario_id is None:
         raise PermissionError("Para ver pedidos hay que iniciar sesión en VisagShop")
     return pedidos.mis_pedidos(sesion, args, quien.usuario_id)
 

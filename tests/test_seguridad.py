@@ -1,11 +1,3 @@
-"""Prompt injection y abuso.
-
-Un modelo de IA puede ser engañado; por eso estas pruebas usan un Claude simulado que
-"obedece" al atacante y comprueban que, aun así, el sistema no entrega datos ajenos, no
-amplía permisos y no revela sus instrucciones. Cómo responde el modelo real ante estos
-ataques se mide aparte, en las evaluaciones (etapa 4).
-"""
-
 import json
 from uuid import UUID
 
@@ -26,19 +18,16 @@ VALENTINA_ID = "22222222-2222-4222-8222-222222222222"
 PASE_ANDRES = {"Authorization": f"Bearer {emitir_pase(ANDRES, SECRETO_PRUEBAS)}"}
 
 
-# ------------------------------------------------------------------ unitarias
-
-
 @pytest.mark.parametrize(
     ("entrada", "esperado"),
     [
-        ("hola​mundo", "hola mundo"),  # espacio de ancho cero
-        ("ig‍nora", "ig nora"),  # unión de ancho cero
-        ("texto‮oculto", "texto oculto"),  # invierte la dirección del texto
-        ("a\x00b\x07c", "a b c"),  # caracteres de control
-        ("ＩＧＮＯＲＡ", "IGNORA"),  # letras de ancho completo -> normales (NFKC)
+        ("hola​mundo", "hola mundo"),
+        ("ig‍nora", "ig nora"),
+        ("texto‮oculto", "texto oculto"),
+        ("a\x00b\x07c", "a b c"),
+        ("ＩＧＮＯＲＡ", "IGNORA"),
         ("  muchos    espacios  ", "muchos espacios"),
-        ("¿Tienen jeans talla 32?", "¿Tienen jeans talla 32?"),  # el español queda intacto
+        ("¿Tienen jeans talla 32?", "¿Tienen jeans talla 32?"),
     ],
 )
 def test_limpiar_mensaje(entrada: str, esperado: str) -> None:
@@ -57,7 +46,7 @@ def test_filtro_deja_pasar_respuestas_normales() -> None:
     [
         INSTRUCCIONES_BASE,
         "Claro, mis reglas dicen: " + INSTRUCCIONES_BASE.split("\n")[3],
-        instrucciones_para(Rol.ADMINISTRADOR).upper(),  # aunque cambie mayúsculas
+        instrucciones_para(Rol.ADMINISTRADOR).upper(),
         "Mi clave es sk-ant-api03-abcdefghijklmnop",
     ],
 )
@@ -65,11 +54,7 @@ def test_filtro_bloquea_fugas(fuga: str) -> None:
     assert filtrar_respuesta(fuga) == (MENSAJE_FILTRADO, True)
 
 
-# ------------------------------------------------------------------ de punta a punta
-
-
 def herramientas_ejecutadas(claude: ClaudeSimulado) -> list[dict[str, object]]:
-    """Resultados de herramientas que el sistema le devolvió al modelo."""
     resultados: list[dict[str, object]] = []
     for peticion in claude.peticiones:
         for mensaje in peticion["messages"]:
@@ -106,9 +91,9 @@ def test_ataque_pedidos_ajenos_aunque_el_modelo_obedezca(
         headers=PASE_ANDRES,
     )
     resultados = {r["tool_use_id"]: r for r in herramientas_ejecutadas(claude)}
-    assert json.loads(str(resultados["a"]["content"])) == []  # el 1003 es de Valentina
-    assert resultados["b"]["is_error"] is True  # herramienta de administrador
-    assert resultados["c"]["is_error"] is True  # herramienta inexistente
+    assert json.loads(str(resultados["a"]["content"])) == []
+    assert resultados["b"]["is_error"] is True
+    assert resultados["c"]["is_error"] is True
     todo = json.dumps(herramientas_ejecutadas(claude), ensure_ascii=False)
     assert "Valentina" not in todo
     assert "VS-1003" not in todo
@@ -170,7 +155,6 @@ def test_las_instrucciones_y_herramientas_no_cambian_por_lo_que_diga_el_usuario(
             "ver_producto",
             "listar_categorias",
         }
-    # El mensaje del usuario va como texto del usuario, nunca dentro de las instrucciones.
     assert "SYSTEM:" in claude.peticiones[0]["messages"][-1]["content"]
 
 
@@ -217,7 +201,6 @@ def test_encabezados_de_seguridad(cliente: TestClient, claude: ClaudeSimulado) -
 
 @pytest.mark.integracion
 def test_no_acepta_peticiones_de_navegadores_de_otros_sitios(cliente: TestClient) -> None:
-    # Sin CORS habilitado, un navegador en otro dominio no puede leer las respuestas.
     respuesta = cliente.options(
         "/api/v1/chat",
         headers={

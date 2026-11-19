@@ -1,13 +1,3 @@
-"""Límites de uso para que la demo pública no gaste el saldo de la API de Claude.
-
-Dos barreras, revisadas ANTES de llamar al modelo:
-1. Preguntas por hora: los invitados se cuentan por la huella de su conexión (no tienen
-   cuenta); clientes y administrador, por su cuenta.
-2. Presupuesto diario global en dólares: si el gasto de hoy (hora de Colombia) llega al
-   tope, el asistente responde que descansa hasta mañana.
-Los conteos salen del historial en PostgreSQL, así sobreviven a reinicios del servidor.
-"""
-
 import hashlib
 import hmac
 from dataclasses import dataclass, field
@@ -36,11 +26,10 @@ class LimiteAlcanzado(Exception):
     def __init__(self, mensaje: str, reintentar_en: int) -> None:
         super().__init__(mensaje)
         self.mensaje = mensaje
-        self.reintentar_en = reintentar_en  # segundos, para el encabezado Retry-After
+        self.reintentar_en = reintentar_en
 
 
 def huella_origen(direccion_ip: str | None, secreto: str) -> str:
-    """HMAC-SHA256 de la IP: permite contar sin guardar la dirección."""
     valor = (direccion_ip or "desconocido").encode()
     return hmac.new(secreto.encode(), valor, hashlib.sha256).hexdigest()[:32]
 

@@ -1,5 +1,3 @@
-"""Herramienta buscar_productos contra PostgreSQL real (datos de tests/datos/datos_prueba.sql)."""
-
 import pytest
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -15,8 +13,8 @@ def ids(sesion: Session, **filtros: object) -> list[str]:
 
 def test_sin_filtros_ordena_por_precio_y_deja_sin_precio_al_final(sesion: Session) -> None:
     resultado = ids(sesion, limite=20)
-    assert resultado[0] == "p001"  # la más barata: 45.000
-    assert resultado[-1] == "p008"  # sin precio va al final
+    assert resultado[0] == "p001"
+    assert resultado[-1] == "p008"
     assert len(resultado) == 8
 
 
@@ -73,7 +71,6 @@ def test_sin_resultados_devuelve_lista_vacia(sesion: Session) -> None:
 
 
 def test_el_porcentaje_no_funciona_como_comodin(sesion: Session) -> None:
-    # "%" se busca como carácter literal: solo p006 lo tiene ("100% algodón"), no todo el catálogo.
     assert ids(sesion, texto="%") == ["p006"]
     assert ids(sesion, texto="100%") == ["p006"]
 
@@ -96,7 +93,6 @@ def test_un_intento_de_inyeccion_sql_se_trata_como_texto(sesion: Session, ataque
 
 
 def test_orden_del_mas_caro_al_mas_barato(sesion: Session) -> None:
-    # Los productos sin precio quedan al final también en este orden.
     assert ids(sesion, orden="mas_caro", limite=3) == ["p007", "p005", "p006"]
     assert ids(sesion, categoria="gorras", orden="mas_caro") == ["p002", "p001"]
 
@@ -107,7 +103,6 @@ def test_orden_invalido_se_rechaza() -> None:
 
 
 def test_el_plural_encuentra_el_singular(sesion: Session) -> None:
-    # Hallado en producción: "jeans" no encontraba "Jean 1.1 · Azul roto".
     assert ids(sesion, texto="jeans") == ["p004", "p003"]
     assert ids(sesion, texto="jeans negros") == ["p004"]
     assert ids(sesion, texto="gorras rojas") == ["p002"]

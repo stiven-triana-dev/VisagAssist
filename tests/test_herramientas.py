@@ -1,5 +1,3 @@
-"""Herramientas de catálogo, pedidos y administrador, y su registro con permisos por rol."""
-
 import json
 from typing import Any
 from uuid import UUID, uuid4
@@ -28,9 +26,6 @@ def error(sesion: Session, nombre: str, quien: Identidad, **entrada: object) -> 
     resultado = registro.ejecutar(sesion, nombre, entrada, quien)
     assert resultado.es_error
     return resultado.contenido
-
-
-# ------------------------------------------------------------------ catálogo
 
 
 def test_listar_categorias_con_conteo_y_rango_de_precios(sesion: Session) -> None:
@@ -70,9 +65,6 @@ def test_ver_producto_rechaza_ids_con_formato_raro(sesion: Session) -> None:
     )
 
 
-# ------------------------------------------------------------------ pedidos del cliente
-
-
 def test_un_cliente_ve_solo_sus_pedidos_del_mas_reciente_al_mas_antiguo(sesion: Session) -> None:
     pedidos = correr(sesion, "mis_pedidos", ANDRES)
     assert [p["numero"] for p in pedidos] == ["VS-1002", "VS-1001"]
@@ -100,7 +92,6 @@ def test_pedir_el_numero_de_otro_cliente_no_devuelve_nada(sesion: Session) -> No
 
 
 def test_el_modelo_no_puede_cambiar_el_usuario_con_argumentos_extra(sesion: Session) -> None:
-    # Aunque el modelo intente mandar un user_id, la herramienta solo usa la identidad firmada.
     resultado = registro.ejecutar(
         sesion, "mis_pedidos", {"user_id": str(VALENTINA.usuario_id)}, ANDRES
     )
@@ -116,9 +107,6 @@ def test_el_pedido_no_expone_datos_de_contacto(sesion: Session) -> None:
 
 def test_cliente_sin_pedidos(sesion: Session) -> None:
     assert correr(sesion, "mis_pedidos", Identidad(Rol.CLIENTE, uuid4())) == []
-
-
-# ------------------------------------------------------------------ administrador
 
 
 def test_pedidos_pendientes_del_mas_antiguo_al_mas_reciente(sesion: Session) -> None:
@@ -162,9 +150,6 @@ def test_productos_incompletos(sesion: Session) -> None:
     assert correr(sesion, "productos_incompletos", ADMIN) == [
         {"id": "p008", "nombre": "Tenis clásicos · Negros", "falta": ["tallas", "precio"]}
     ]
-
-
-# ------------------------------------------------------------------ permisos por rol
 
 
 @pytest.mark.parametrize(

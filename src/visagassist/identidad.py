@@ -1,12 +1,3 @@
-"""Quién pregunta: invitado, cliente o administrador.
-
-El navegador nunca habla directo con VisagAssist sobre datos privados: el servidor de
-VisagShop, que ya sabe quién inició sesión, firma un "pase" corto (JWT con HS256) con un
-secreto que solo conocen los dos servicios. VisagAssist verifica la firma y toma de ahí el
-rol y el id del usuario. El modelo de IA nunca recibe ni elige ese id: las herramientas lo
-leen de la identidad, así un cliente no puede pedir los pedidos de otro aunque lo intente.
-"""
-
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
@@ -30,13 +21,10 @@ class Identidad:
     rol: Rol
     usuario_id: UUID | None = None
     nombre: str | None = None
-    # Huella de la conexión de quien escribe, calculada por VisagShop: cuando hace de
-    # intermediario, todo llega desde su servidor y esa IP no sirve para los límites.
     origen: str | None = None
 
     @property
     def clave_propietario(self) -> str:
-        """Identifica al dueño de una conversación (para que nadie lea la de otro)."""
         return f"{self.rol}:{self.usuario_id or '-'}"
 
 
@@ -44,11 +32,10 @@ INVITADO = Identidad(Rol.INVITADO)
 
 
 class PaseInvalido(Exception):
-    """La firma, la vigencia o el contenido del pase no son válidos."""
+    pass
 
 
 def emitir_pase(identidad: Identidad, secreto: str, vigencia: timedelta = VIGENCIA_MAXIMA) -> str:
-    """Lo usa VisagShop (y las pruebas) para firmar quién pregunta."""
     ahora = datetime.now(UTC)
     datos: dict[str, object] = {
         "iss": EMISOR,

@@ -1,6 +1,3 @@
-"""Ruta /api/v1/chat de punta a punta: identidad, agente (Claude simulado), herramientas
-reales sobre PostgreSQL e historial con costos en la base propia."""
-
 import json
 from datetime import timedelta
 from decimal import Decimal

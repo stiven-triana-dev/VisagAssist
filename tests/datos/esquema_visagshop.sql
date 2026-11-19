@@ -1,11 +1,3 @@
--- Copia de la estructura de VisagShop (database/structure.sql) para las pruebas de VisagAssist.
--- Se quitaron las líneas que crean la base, porque las pruebas usan una base ya creada.
--- Si VisagShop cambia su estructura, hay que actualizar esta copia.
-
-
--- ---------------------------------------------------------------------
--- Tablas secundarias de productos
--- ---------------------------------------------------------------------
 CREATE TABLE categories (
   id         SERIAL       PRIMARY KEY,
   name       VARCHAR(70)  NOT NULL UNIQUE,
@@ -27,8 +19,6 @@ CREATE TABLE colors (
   updated_at TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
 
--- Fotografías subidas desde el panel de administración.
--- Las fotos originales del catálogo viven en public/img y no usan esta tabla.
 CREATE TABLE uploads (
   id         UUID         PRIMARY KEY,
   mime       VARCHAR(20)  NOT NULL CHECK (mime IN ('image/jpeg', 'image/png', 'image/webp', 'image/gif')),
@@ -37,11 +27,6 @@ CREATE TABLE uploads (
   updated_at TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
 
--- ---------------------------------------------------------------------
--- Productos
--- La referencia pública (p001, p002...) se conserva como clave primaria
--- porque aparece en las URLs y en los carritos guardados por los clientes.
--- ---------------------------------------------------------------------
 CREATE SEQUENCE product_number_seq START WITH 1;
 
 CREATE TABLE products (
@@ -57,7 +42,6 @@ CREATE TABLE products (
 );
 CREATE INDEX products_category_idx ON products(category_id);
 
--- Relación muchos a muchos: productos <-> tallas (con orden de presentación)
 CREATE TABLE product_sizes (
   product_id VARCHAR(10) NOT NULL REFERENCES products(id) ON UPDATE CASCADE ON DELETE CASCADE,
   size_id    INTEGER     NOT NULL REFERENCES sizes(id)    ON UPDATE CASCADE ON DELETE RESTRICT,
@@ -65,7 +49,6 @@ CREATE TABLE product_sizes (
   PRIMARY KEY (product_id, size_id)
 );
 
--- Relación muchos a muchos: productos <-> colores
 CREATE TABLE product_colors (
   product_id VARCHAR(10) NOT NULL REFERENCES products(id) ON UPDATE CASCADE ON DELETE CASCADE,
   color_id   INTEGER     NOT NULL REFERENCES colors(id)   ON UPDATE CASCADE ON DELETE RESTRICT,
@@ -73,9 +56,6 @@ CREATE TABLE product_colors (
   PRIMARY KEY (product_id, color_id)
 );
 
--- ---------------------------------------------------------------------
--- Usuarios y sesiones
--- ---------------------------------------------------------------------
 CREATE TABLE users (
   id            UUID         PRIMARY KEY,
   first_name    VARCHAR(75)  NOT NULL CHECK (char_length(first_name) >= 2),
@@ -90,7 +70,6 @@ CREATE TABLE users (
   updated_at    TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
 
--- El navegador solo guarda un token aleatorio; aquí se almacena su SHA-256.
 CREATE TABLE sessions (
   token_hash CHAR(64)    PRIMARY KEY,
   user_id    UUID        NOT NULL REFERENCES users(id) ON UPDATE CASCADE ON DELETE CASCADE,
@@ -101,10 +80,6 @@ CREATE TABLE sessions (
 CREATE INDEX sessions_user_idx    ON sessions(user_id);
 CREATE INDEX sessions_expires_idx ON sessions(expires_at);
 
--- ---------------------------------------------------------------------
--- Pedidos (carrito de compras guardado)
--- Copian los datos de entrega y de cada prenda al momento de la compra.
--- ---------------------------------------------------------------------
 CREATE SEQUENCE order_number_seq START WITH 1001;
 
 CREATE TABLE orders (
@@ -147,10 +122,6 @@ CREATE TABLE order_items (
 );
 CREATE INDEX order_items_order_idx ON order_items(order_id);
 
--- ---------------------------------------------------------------------
--- Tabla técnica: registra los ajustes de datos que la aplicación ejecuta
--- una sola vez al arrancar (no tiene relaciones con el resto).
--- ---------------------------------------------------------------------
 CREATE TABLE app_meta (
   key        VARCHAR(80) PRIMARY KEY,
   value      JSONB       NOT NULL,

@@ -1,14 +1,3 @@
-"""Preparación de las pruebas.
-
-Las pruebas de integración necesitan un PostgreSQL real. Se indica con la variable
-TEST_DATABASE_URL, que debe apuntar a una base VACÍA de pruebas con un usuario dueño
-(por ejemplo postgresql+pg8000://postgres:postgres@localhost:5432/visagassist_test).
-
-Con ese usuario se crea la estructura de VisagShop, se cargan datos de prueba y se crea
-un rol de SOLO LECTURA. La aplicación se conecta con ese rol, igual que en producción.
-Si TEST_DATABASE_URL no existe, esas pruebas se omiten y las demás corren normal.
-"""
-
 import os
 import re
 from collections.abc import Iterator
@@ -31,11 +20,9 @@ from visagassist.db import crear_motor, fabrica_sesiones, obtener_sesion
 from visagassist.identidad import Rol
 from visagassist.limites import Limites
 
-# Configuración mínima para que la aplicación arranque en las pruebas (sin secretos reales).
 SECRETO_PRUEBAS = "secreto-de-pruebas-con-al-menos-32-bytes"
 os.environ.setdefault("DATABASE_URL", "postgresql+pg8000://sin:uso@localhost:1/ninguna")
 os.environ["VISAGASSIST_SECRETO"] = SECRETO_PRUEBAS
-# Vacías a propósito: las pruebas nunca usan las claves reales que haya en el archivo .env.
 os.environ["ANTHROPIC_API_KEY"] = ""
 os.environ["GEMINI_API_KEY"] = ""
 obtener_configuracion.cache_clear()
@@ -54,11 +41,6 @@ def _url_dueno() -> str:
 
 
 def _sentencias(sql: str) -> list[str]:
-    """Separa un archivo .sql en sentencias (pg8000 ejecuta una por llamada).
-
-    Basta con cortar en el ";" del final de línea: en estos archivos ningún texto entre
-    comillas termina una línea con ";".
-    """
     partes = [p.strip() for p in re.split(r";[ \t]*\r?\n", sql + "\n")]
     sin_comentarios = (
         "\n".join(linea for linea in p.splitlines() if not linea.strip().startswith("--"))
@@ -105,8 +87,6 @@ def sesion(motor_lectura: Engine) -> Iterator[Session]:
 
 @pytest.fixture(scope="session")
 def motor_asistente(motor_lectura: Engine) -> Iterator[Engine]:
-    """Base propia del asistente: en las pruebas, la misma base con el usuario dueño.
-    Las tablas se crean con las migraciones reales de Alembic."""
     url = _url_dueno()
     configuracion = Config(str(RAIZ / "alembic.ini"))
     configuracion.set_main_option("sqlalchemy.url", url.replace("%", "%%"))
@@ -142,7 +122,6 @@ def cliente(
     api.app.dependency_overrides[obtener_sesion] = _sesion_tienda
     api.app.dependency_overrides[historial.obtener_sesion_asistente] = _sesion_asistente
     api.app.dependency_overrides[api.obtener_agente] = lambda: Agente(claude)
-    # Límites amplios por defecto; las pruebas de límites los cambian.
     api.app.dependency_overrides[api.obtener_limites] = lambda: Limites(
         por_hora=dict.fromkeys(Rol, 10_000), presupuesto_diario_usd=Decimal(1_000)
     )

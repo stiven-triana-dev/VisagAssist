@@ -1,5 +1,3 @@
-"""Herramientas del catálogo: categorías y detalle de un producto."""
-
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session

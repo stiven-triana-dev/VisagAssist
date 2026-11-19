@@ -1,5 +1,3 @@
-"""Herramientas de pedidos: los del cliente (solo los suyos) y las del administrador."""
-
 from datetime import UTC, datetime, timedelta
 from typing import Literal
 from uuid import UUID
@@ -58,9 +56,6 @@ def _items(sesion: Session, ids_pedido: list[UUID]) -> dict[UUID, list[ItemPedid
     return resultado
 
 
-# ---------------------------------------------------------------- cliente
-
-
 class ArgumentosMisPedidos(BaseModel):
     numero: int | None = Field(
         default=None,
@@ -104,9 +99,6 @@ def mis_pedidos(
         )
         for f in filas
     ]
-
-
-# ---------------------------------------------------------------- administrador
 
 
 class ArgumentosPendientes(BaseModel):
@@ -221,7 +213,6 @@ class ProductoIncompleto(BaseModel):
 def productos_incompletos(
     sesion: Session, argumentos: ArgumentosIncompletos
 ) -> list[ProductoIncompleto]:
-    """Productos sin tallas o sin precio: lo que el administrador debe completar."""
     sin_tallas = ~(
         select(productos_tallas.c.product_id)
         .where(productos_tallas.c.product_id == productos.c.id)

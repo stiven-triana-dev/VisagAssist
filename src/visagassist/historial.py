@@ -1,10 +1,3 @@
-"""Historial de conversaciones y costos, en la base PROPIA del asistente.
-
-Es una base distinta a la de VisagShop: allí el asistente solo lee; aquí escribe sus
-conversaciones, qué herramientas usó, cuántos tokens gastó y cuánto costó cada respuesta.
-La estructura la crean las migraciones de Alembic (carpeta migraciones/).
-"""
-
 from collections.abc import Iterator
 from dataclasses import asdict
 from datetime import datetime
@@ -79,7 +72,6 @@ mensajes = Table(
     CheckConstraint("autor IN ('usuario', 'asistente')", name="mensajes_autor_valido"),
 )
 
-# Cuántos mensajes anteriores se le envían al modelo como contexto.
 MENSAJES_DE_CONTEXTO = 20
 
 
@@ -106,7 +98,6 @@ def _verificar_propietario(sesion: Session, conversacion_id: UUID, quien: Identi
 
 
 def cargar_contexto(sesion: Session, conversacion_id: UUID, quien: Identidad) -> list[Turno]:
-    """Últimos mensajes de la conversación, en orden, para dárselos al modelo."""
     _verificar_propietario(sesion, conversacion_id, quien)
     filas = sesion.execute(
         select(mensajes.c.autor, mensajes.c.texto)
@@ -160,7 +151,6 @@ def guardar_intercambio(
 def preguntas_desde(
     sesion: Session, desde: datetime, *, propietario: str | None = None, origen: str | None = None
 ) -> int:
-    """Preguntas hechas desde un momento, por dueño (cuenta) o por origen (invitados)."""
     consulta = (
         select(func.count())
         .select_from(mensajes.join(conversaciones))
@@ -174,7 +164,6 @@ def preguntas_desde(
 
 
 def gasto_desde(sesion: Session, desde: datetime) -> Decimal:
-    """Costo total en dólares de las respuestas desde un momento (todas las personas)."""
     total = sesion.scalar(
         select(func.coalesce(func.sum(mensajes.c.costo_usd), 0)).where(
             mensajes.c.creado_en >= desde
@@ -193,9 +182,6 @@ def mensajes_de(
         .order_by(mensajes.c.id)
     ).all()
     return [{"autor": a, "texto": t, "fecha": f} for a, t, f in filas]
-
-
-# ----------------------------------------------------------------- conexión
 
 
 @lru_cache

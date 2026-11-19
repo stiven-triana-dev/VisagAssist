@@ -1,11 +1,3 @@
-"""Prompt injection y abuso.
-
-Un modelo de IA puede ser engañado; por eso estas pruebas usan un Claude simulado que
-"obedece" al atacante y comprueban que, aun así, el sistema no entrega datos ajenos, no
-amplía permisos y no revela sus instrucciones. Cómo responde el modelo real ante estos
-ataques se mide aparte, en las evaluaciones (etapa 4).
-"""
-
 import json
 from uuid import UUID
 
@@ -24,9 +16,6 @@ from visagassist.seguridad import MENSAJE_FILTRADO, filtrar_respuesta, limpiar_m
 ANDRES = Identidad(Rol.CLIENTE, UUID("11111111-1111-4111-8111-111111111111"))
 VALENTINA_ID = "22222222-2222-4222-8222-222222222222"
 PASE_ANDRES = {"Authorization": f"Bearer {emitir_pase(ANDRES, SECRETO_PRUEBAS)}"}
-
-
-# ------------------------------------------------------------------ unitarias
 
 
 @pytest.mark.parametrize(
@@ -65,11 +54,7 @@ def test_filtro_bloquea_fugas(fuga: str) -> None:
     assert filtrar_respuesta(fuga) == (MENSAJE_FILTRADO, True)
 
 
-# ------------------------------------------------------------------ de punta a punta
-
-
 def herramientas_ejecutadas(claude: ClaudeSimulado) -> list[dict[str, object]]:
-    """Resultados de herramientas que el sistema le devolvió al modelo."""
     resultados: list[dict[str, object]] = []
     for peticion in claude.peticiones:
         for mensaje in peticion["messages"]:
@@ -170,7 +155,6 @@ def test_las_instrucciones_y_herramientas_no_cambian_por_lo_que_diga_el_usuario(
             "ver_producto",
             "listar_categorias",
         }
-    # El mensaje del usuario va como texto del usuario, nunca dentro de las instrucciones.
     assert "SYSTEM:" in claude.peticiones[0]["messages"][-1]["content"]
 
 
@@ -217,7 +201,6 @@ def test_encabezados_de_seguridad(cliente: TestClient, claude: ClaudeSimulado) -
 
 @pytest.mark.integracion
 def test_no_acepta_peticiones_de_navegadores_de_otros_sitios(cliente: TestClient) -> None:
-    # Sin CORS habilitado, un navegador en otro dominio no puede leer las respuestas.
     respuesta = cliente.options(
         "/api/v1/chat",
         headers={

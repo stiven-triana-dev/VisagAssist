@@ -1,11 +1,3 @@
-"""Conexión a PostgreSQL en modo de solo lectura.
-
-Hay dos barreras para que el asistente nunca pueda modificar la tienda:
-1. El usuario de la base (rol de PostgreSQL) solo tiene permiso SELECT.
-2. Cada conexión se marca como de solo lectura al abrirse: aunque el rol tuviera
-   más permisos por error, PostgreSQL rechaza cualquier INSERT, UPDATE o DELETE.
-"""
-
 import re
 import ssl
 from collections.abc import Iterator
@@ -17,13 +9,10 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from visagassist.config import obtener_configuracion
 
-# Ninguna consulta del asistente debería tardar más de esto.
 TIEMPO_MAXIMO_CONSULTA_MS = 5000
 
 
 def limpiar_url(texto: str) -> str:
-    """Encuentra la dirección aunque se haya pegado con espacios, saltos de línea, comillas
-    o en el formato ``psql 'postgresql://...'`` que también ofrece Neon."""
     encontrada = re.search(r"postgres(?:ql)?(?:\+\w+)?://[^\s'\"]+", texto)
     if encontrada is None:
         # Sin mostrar el valor: podría contener la clave.
@@ -32,11 +21,6 @@ def limpiar_url(texto: str) -> str:
 
 
 def preparar_url(url: str) -> tuple[URL, dict[str, Any]]:
-    """Acepta la URL tal como la copia Neon ("postgresql://...?sslmode=require").
-
-    Se usa siempre el conector pg8000, y como pg8000 no entiende "sslmode", se quita de la
-    URL y se activa SSL con verificación de certificado.
-    """
     datos_url = make_url(limpiar_url(url))
     if datos_url.drivername in {"postgres", "postgresql"}:
         datos_url = datos_url.set(drivername="postgresql+pg8000")
@@ -74,6 +58,5 @@ def fabrica_sesiones(m: Engine) -> sessionmaker[Session]:
 
 
 def obtener_sesion() -> Iterator[Session]:
-    """Dependencia de FastAPI: una sesión por petición, siempre cerrada al final."""
     with fabrica_sesiones(motor())() as sesion:
         yield sesion

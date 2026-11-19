@@ -1,9 +1,3 @@
-"""Claude simulado para las pruebas: responde un guion fijo y guarda lo que recibió.
-
-Así las pruebas del agente no llaman a la API real ni gastan saldo, y se puede comprobar
-exactamente qué se le envió a Claude en cada ronda.
-"""
-
 import copy
 from typing import Any
 

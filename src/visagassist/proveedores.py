@@ -1,5 +1,3 @@
-"""Elige qué proveedor de IA responde (Claude o Gemini) según la configuración."""
-
 from dataclasses import dataclass
 
 from visagassist.claude import ClienteClaude, ClienteHTTPClaude
@@ -15,7 +13,6 @@ class Proveedor:
 
 
 def elegir_proveedor(configuracion: Configuracion) -> Proveedor | None:
-    """Devuelve el proveedor configurado, o None si no hay ninguna clave."""
     claude = configuracion.anthropic_api_key
     gemini = configuracion.gemini_api_key
     eleccion = configuracion.proveedor_ia
@@ -29,7 +26,6 @@ def elegir_proveedor(configuracion: Configuracion) -> Proveedor | None:
     if eleccion == "gemini" and gemini:
         return Proveedor(
             "gemini",
-            # El plan gratuito a veces tarda: se espera más que con Claude.
             ClienteGemini(gemini.get_secret_value(), tiempo_espera=120.0),
             configuracion.modelo_gemini,
         )

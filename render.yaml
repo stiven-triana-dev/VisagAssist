@@ -1,4 +1,3 @@
-# Despliegue en Render (plan gratuito). Las claves se llenan en Render > Environment.
 services:
   - type: web
     name: visagassist

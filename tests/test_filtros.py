@@ -1,5 +1,3 @@
-"""Validación de los argumentos de la herramienta (no necesitan base de datos)."""
-
 import pytest
 from pydantic import ValidationError
 

@@ -1,5 +1,3 @@
--- Datos pequeños y conocidos para las pruebas (no son los datos reales de la tienda).
-
 INSERT INTO categories (id, name) VALUES
   (1, 'Gorras'), (2, 'Pantalones'), (3, 'Sudaderas'), (4, 'Zapatos');
 
@@ -24,12 +22,10 @@ INSERT INTO product_sizes (product_id, size_id, position) VALUES
   ('p005', 5, 0), ('p005', 6, 1), ('p005', 7, 2),
   ('p006', 5, 0), ('p006', 6, 1),
   ('p007', 8, 0), ('p007', 9, 1);
-  -- p008 no tiene tallas a propósito (como los tenis reales pendientes de tallas).
 
 INSERT INTO colors (id, name) VALUES (1, 'Gris'), (2, 'Negro');
 INSERT INTO product_colors (product_id, color_id, position) VALUES ('p005', 1, 0), ('p006', 2, 0);
 
--- Dos clientes con contraseñas ficticias (el asistente nunca lee esta columna).
 INSERT INTO users (id, first_name, last_name, email, password_hash) VALUES
   ('11111111-1111-4111-8111-111111111111', 'Andrés',   'Gómez', 'andres@prueba.test',   'hash-ficticio'),
   ('22222222-2222-4222-8222-222222222222', 'Valentina', 'Ríos', 'valentina@prueba.test', 'hash-ficticio');

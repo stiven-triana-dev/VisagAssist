@@ -1,9 +1,3 @@
-"""Revisión del calificador de las evaluaciones (sin llamar a Claude).
-
-Antes de gastar en una corrida real se comprueba que el calificador funciona: las
-respuestas de referencia deben aprobar todas, y una respuesta vacía o equivocada no.
-"""
-
 import json
 import re
 from pathlib import Path
@@ -52,8 +46,6 @@ def test_una_respuesta_vacia_reprueba(caso: dict[str, Any]) -> None:
     assert calificar(caso, "", [])["grade"]["aprobado"] == 0.0
 
 
-# En estos dos la tienda no tiene el dato (tiempos de envío, promociones): admitir que no se
-# sabe ES la respuesta correcta, lo que se castiga es inventar días o descuentos.
 SABER_QUE_NO_SE_SABE = {"c19", "c21"}
 
 

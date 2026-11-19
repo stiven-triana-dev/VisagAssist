@@ -1,16 +1,3 @@
-"""Defensas contra prompt injection (cuando alguien intenta engañar al modelo con texto).
-
-La defensa principal no está aquí sino en el diseño: el modelo solo puede usar herramientas
-fijas de solo lectura, la identidad de quien pregunta viene firmada por VisagShop y cada
-herramienta revisa permisos. Aunque el modelo fuera engañado, no tiene cómo leer datos
-ajenos ni modificar nada. Este módulo agrega dos capas más:
-
-1. Entrada: se quitan caracteres invisibles (de ancho cero, de control o que invierten el
-   texto), una forma común de esconder instrucciones, y se normaliza el texto (NFKC).
-2. Salida: si la respuesta contiene fragmentos de las instrucciones internas o algo con
-   forma de clave de API, se reemplaza antes de mostrarla o guardarla.
-"""
-
 import re
 import unicodedata
 
@@ -23,7 +10,6 @@ _LARGO_MINIMO_FRAGMENTO = 30
 
 
 def limpiar_mensaje(texto: str) -> str:
-    """Normaliza el mensaje del usuario y quita caracteres invisibles."""
     normalizado = unicodedata.normalize("NFKC", texto)
     visibles = "".join(
         c if unicodedata.category(c) not in _CATEGORIAS_INVISIBLES else " " for c in normalizado
@@ -50,7 +36,6 @@ def revela_instrucciones(texto: str) -> bool:
 
 
 def filtrar_respuesta(texto: str) -> tuple[str, bool]:
-    """Devuelve el texto a mostrar y si se bloqueó."""
     if revela_instrucciones(texto) or _PATRON_CLAVE.search(texto):
         return MENSAJE_FILTRADO, True
     return texto, False

@@ -1,13 +1,3 @@
-"""El agente: conversa con Claude y ejecuta las herramientas que Claude pide.
-
-Bucle (lo mismo que hacen los SDK, escrito a mano para entender y controlar cada paso):
-1. Se envía a Claude la conversación, las instrucciones del sistema y las herramientas del rol.
-2. Si Claude responde con stop_reason "tool_use", se ejecutan TODAS las herramientas pedidas
-   y se devuelven sus resultados en un solo mensaje; se repite.
-3. Cuando Claude termina (end_turn), su texto es la respuesta para el usuario.
-Hay un tope de rondas para que una pregunta nunca entre en un ciclo ni gaste de más.
-"""
-
 import logging
 from dataclasses import dataclass, field
 from decimal import Decimal
@@ -67,8 +57,6 @@ def instrucciones_para(rol: Rol) -> str:
 
 @dataclass(frozen=True)
 class Turno:
-    """Un mensaje ya guardado de la conversación (solo texto)."""
-
     rol: Literal["usuario", "asistente"]
     texto: str
 
@@ -157,8 +145,6 @@ class Agente:
         return {
             "model": self._modelo,
             "max_tokens": self._maximo_tokens,
-            # Sistema y herramientas no cambian entre preguntas del mismo rol: con la caché
-            # de la API esa parte se cobra a una décima parte desde la segunda pregunta.
             "cache_control": {"type": "ephemeral"},
             "system": [{"type": "text", "text": instrucciones_para(rol)}],
             "tools": [h.definicion_api() for h in registro.herramientas_para(rol)],
@@ -173,7 +159,6 @@ class Agente:
         contenido: list[dict[str, Any]],
         respuesta: RespuestaAgente,
     ) -> list[dict[str, Any]]:
-        """Ejecuta todas las herramientas pedidas y devuelve los resultados en un mensaje."""
         resultados: list[dict[str, Any]] = []
         for bloque in contenido:
             if bloque.get("type") != "tool_use":

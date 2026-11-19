@@ -1,10 +1,3 @@
-"""Cliente de la API de Claude (Messages API) por HTTP.
-
-Se usa HTTP directo con httpx en vez del SDK oficial porque en el equipo de desarrollo
-(Windows con Control de aplicaciones inteligente) una dependencia compilada del SDK queda
-bloqueada. La API es un único endpoint: POST /v1/messages.
-"""
-
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -16,20 +9,16 @@ import httpx
 URL_API = "https://api.anthropic.com/v1/messages"
 VERSION_API = "2026-10-21"
 
-# Errores que vale la pena reintentar: límite de peticiones, fallas del servidor y sobrecarga.
 ESTADOS_REINTENTABLES = {408, 409, 429, 500, 502, 503, 504, 529}
 
 
 @dataclass(frozen=True)
 class Precio:
-    """Precio en dólares por millón de tokens."""
-
     entrada: Decimal
     salida: Decimal
     lectura_cache: Decimal  # proporción del precio de entrada
 
 
-# Precios por millón de tokens (USD). Haiku 5.5: tarifa para prompts de hasta 100K tokens.
 PRECIOS: dict[str, Precio] = {
     "claude-haiku-5-5": Precio(Decimal("0.10"), Decimal("0.50"), Decimal("0.1")),
     "claude-sonnet-5-5": Precio(Decimal("2"), Decimal("10"), Decimal("0.05")),
@@ -91,16 +80,12 @@ class RespuestaClaude:
 
 
 class ErrorClaude(Exception):
-    """Error al llamar a la API de Claude."""
-
     def __init__(self, mensaje: str, estado: int | None = None) -> None:
         super().__init__(mensaje)
         self.estado = estado
 
 
 class ClienteClaude(Protocol):
-    """Lo que el agente necesita de Claude. En las pruebas se reemplaza por uno simulado."""
-
     def crear_mensaje(self, peticion: dict[str, Any]) -> RespuestaClaude: ...
 
 
@@ -156,7 +141,6 @@ class ClienteHTTPClaude:
 
 
 def _espera(respuesta: httpx.Response, intento: int) -> float:
-    """Respeta el encabezado retry-after si viene (con tope de 10 s); si no, 1 s, 2 s..."""
     valor = respuesta.headers.get("retry-after")
     try:
         return min(float(valor), 10.0) if valor else float(2**intento)

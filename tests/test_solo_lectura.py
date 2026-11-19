@@ -1,5 +1,3 @@
-"""La conexión del asistente nunca puede modificar la tienda."""
-
 import pytest
 from sqlalchemy import text
 from sqlalchemy.exc import DBAPIError
@@ -25,7 +23,6 @@ def test_la_sesion_rechaza_cualquier_escritura(sesion: Session, sql: str) -> Non
 
 
 def test_aunque_se_pida_lectura_y_escritura_el_rol_no_tiene_permiso(sesion: Session) -> None:
-    # Segunda barrera: si alguien quitara el modo solo lectura, el rol sigue sin poder escribir.
     sesion.execute(text("SET TRANSACTION READ WRITE"))
     with pytest.raises(DBAPIError, match=r"permission denied|permiso denegado"):
         sesion.execute(text("UPDATE products SET price = 1"))
